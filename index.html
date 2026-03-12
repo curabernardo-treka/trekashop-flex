@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#FFE600"/>
+<title>TrekaShop · Flex Retiros</title>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="TrekaShop"/>
+<meta name="application-name" content="TrekaShop Flex"/>
+<link rel="manifest" id="pwa-manifest"/>
+<script>
+// Inline PWA manifest (no separate file needed)
+const manifest = {
+  name: "TrekaShop Flex Retiros",
+  short_name: "TrekaShop",
+  description: "Gestión de retiros Flex para TrekaShop",
+  start_url: "./",
+  display: "standalone",
+  background_color: "#0A0A0A",
+  theme_color: "#FFE600",
+  orientation: "portrait",
+  icons: [
+    { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='24' fill='%23FFE600'/><text y='140' x='30' font-size='120'>📦</text></svg>", sizes: "192x192", type: "image/svg+xml" },
+    { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='64' fill='%23FFE600'/><text y='380' x='60' font-size='320'>📦</text></svg>", sizes: "512x512", type: "image/svg+xml" }
+  ]
+};
+const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
+
+// Register service worker inline
+if('serviceWorker' in navigator) {
+  const swCode = `
+    self.addEventListener('install', e => self.skipWaiting());
+    self.addEventListener('activate', e => clients.claim());
+    self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+  `;
+  const swBlob = new Blob([swCode], {type:'application/javascript'});
+  const swUrl = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --y:#FFE600;--b:#0A0A0A;--d:#111;--card:#161616;--card2:#1C1C1C;
+  --border:#252525;--border2:#333;--text:#F2F2F2;--muted:#666;--muted2:#999;
+  --ok:#00E676;--err:#FF4444;--blue:#3483FA;--warn:#FF9800;
+  --r:14px;--r2:10px;--r3:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{background:var(--b);color:var(--text);font-family:'Sora',sans-serif;min-height:100dvh;overflow-x:hidden}
+
+/* ── VIEWS ── */
+.view{display:none;flex-direction:column;min-height:100dvh;padding-top:64px}
+.view.active{display:flex}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:90;
+  background:rgba(10,10,10,0.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+}
+.nav-logo{display:flex;align-items:center;gap:10px}
+.nav-logo-mark{
+  width:34px;height:34px;background:var(--y);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;
+}
+.nav-logo-text{line-height:1}
+.nav-logo-text strong{font-family:'Bebas Neue';font-size:18px;letter-spacing:2px;color:var(--y);display:block}
+.nav-logo-text span{font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.nav-actions{display:flex;gap:8px}
+
+/* ── BOTTOM TAB BAR ── */
+#tabbar{
+  position:fixed;top:0;left:0;right:0;z-index:9999;
+  background:#111111;
+  border-bottom:2px solid var(--border2);
+  display:flex;
+  padding-top:env(safe-area-inset-top,0px);
+  pointer-events:auto;
+}
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;padding:12px 0 10px;
+  background:none;border:none;cursor:pointer;
+  color:var(--muted);
+  font-family:'Sora',sans-serif;font-size:11px;font-weight:500;letter-spacing:.3px;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;-webkit-user-select:none;
+  transition:color 0.15s;
+  min-height:64px;
+  pointer-events:auto;
+  touch-action:manipulation;
+}
+.tab-btn .tab-icon{
+  font-size:28px;line-height:1;display:block;
+  transition:transform 0.2s cubic-bezier(.34,1.56,.64,1);
+}
+.tab-btn.active{ color:var(--y); }
+.tab-btn.active .tab-icon{ transform:scale(1.3); }
+.tab-btn.tap-anim .tab-icon{ transform:scale(1.5) !important; }
+
+/* ── SCROLLABLE CONTENT ── */
+.scroll-area{flex:1;overflow-y:auto;padding:16px 16px 24px}
+
+/* ── HOME ACCOUNT CARDS ── */
+.account-card {
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:14px 18px;display:flex;align-items:center;gap:14px;
+}
+.ac-name { font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px;flex:1 }
+.ac-count { font-size:28px;font-weight:700;color:var(--y);min-width:40px;text-align:right }
+.ac-label { font-size:11px;color:var(--muted);min-width:80px;text-align:right }
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+.card-head{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.card-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.card-body{padding:14px}
+
+/* ── SESSION BAR ── */
+.session-bar{
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;
+}
+.session-avatar{
+  width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--y);flex-shrink:0;
+  background:var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden;
+}
+.session-avatar img{width:100%;height:100%;object-fit:cover}
+.session-info{flex:1;min-width:0}
+.session-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-dni{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.session-count{
+  background:var(--y);color:var(--b);font-family:'IBM Plex Mono',monospace;
+  font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;
+}
+
+/* ── SCANNER ── */
+.scanner-wrap{position:relative;width:100%;aspect-ratio:1;background:#000;border-radius:0;overflow:hidden}
+#preview{width:100%;height:100%;object-fit:cover;display:none}
+.scan-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center}
+.scan-frame{width:62%;aspect-ratio:1;position:relative}
+.scan-frame::before,.scan-frame::after,.scan-frame-b::before,.scan-frame-b::after{
+  content:'';position:absolute;width:28px;height:28px;border-color:var(--y);border-style:solid;
+}
+.scan-frame::before{top:0;left:0;border-width:3px 0 0 3px}
+.scan-frame::after{top:0;right:0;border-width:3px 3px 0 0}
+.scan-frame-b::before{bottom:0;left:0;border-width:0 0 3px 3px}
+.scan-frame-b::after{bottom:0;right:0;border-width:0 3px 3px 0}
+.scan-line{position:absolute;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,var(--y),transparent);animation:scanmove 1.8s ease-in-out infinite;top:10%}
+@keyframes scanmove{0%{top:10%;opacity:1}90%{top:90%;opacity:1}100%{top:90%;opacity:0}}
+.cam-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;height:100%;min-height:260px;color:var(--muted);padding:24px;text-align:center}
+.cam-placeholder .big{font-size:52px;opacity:.3}
+.cam-placeholder p{font-size:13px;line-height:1.5}
+
+/* ── BIG NUMBER ── */
+.big-number-display{
+  display:none;align-items:center;justify-content:center;flex-direction:column;
+  padding:30px 20px;background:var(--b);border-bottom:1px solid var(--border);
+  animation:popIn .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+.big-number-display .pkg-num{
+  font-family:'Bebas Neue';font-size:clamp(80px,25vw,140px);color:var(--y);
+  line-height:1;letter-spacing:-2px;
+}
+.big-number-display .pkg-id{font-family:'IBM Plex Mono';font-size:12px;color:var(--muted);margin-top:4px}
+.big-number-display .pkg-who{font-size:14px;color:var(--muted2);margin-top:8px}
+
+/* ── PACKAGE LIST ── */
+.pkg-item{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+  border-bottom:1px solid var(--border);animation:fadeSlide .3s ease;
+}
+@keyframes fadeSlide{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.pkg-item:last-child{border-bottom:none}
+.pkg-num-badge{
+  width:36px;height:36px;background:var(--y);color:var(--b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono';font-weight:600;font-size:14px;flex-shrink:0;
+}
+.pkg-info{flex:1;min-width:0}
+.pkg-info .pid{font-family:'IBM Plex Mono';font-size:11px;color:var(--muted2)}
+.pkg-info .pname{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pkg-info .paddress{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.pkg-del{
+  width:28px;height:28px;border-radius:6px;background:transparent;border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;
+  flex-shrink:0;transition:all .2s;
+}
+.pkg-del:hover{border-color:var(--err);color:var(--err)}
+.pkg-empty{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+.pkg-empty .ei{font-size:36px;opacity:.3;margin-bottom:8px}
+
+/* ── INPUTS ── */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:7px}
+.inp{
+  width:100%;background:var(--b);border:1px solid var(--border2);border-radius:var(--r3);
+  padding:12px 13px;color:var(--text);font-family:'Sora',sans-serif;font-size:14px;outline:none;transition:border-color .2s;
+}
+.inp:focus{border-color:var(--y)}
+.inp::placeholder{color:var(--muted)}
+.inp-row{display:flex;gap:8px}
+.inp-row .inp{flex:1}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 18px;border-radius:var(--r2);border:none;cursor:pointer;
+  font-family:'Sora',sans-serif;font-size:14px;font-weight:600;transition:all .2s;
+}
+.btn-y{background:var(--y);color:var(--b)}
+.btn-y:hover{box-shadow:0 4px 20px rgba(255,230,0,.3);transform:translateY(-1px)}
+.btn-y:active{transform:translateY(0)}
+.btn-y:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--muted2)}
+.btn-ghost:hover{border-color:var(--y);color:var(--y)}
+.btn-danger{background:transparent;border:1px solid var(--err);color:var(--err)}
+.btn-danger:hover{background:rgba(255,68,68,.1)}
+.btn-ok{background:rgba(0,230,118,.1);border:1px solid var(--ok);color:var(--ok)}
+.btn-full{width:100%}
+.btn-sm{padding:8px 12px;font-size:12px}
+
+/* ── STATUS DOT ── */
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok);animation:blink 2s infinite}
+.dot.warn{background:var(--warn)}
+.dot.err{background:var(--err)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── CHOFER CARD ── */
+.chofer-card{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background .2s;
+}
+.chofer-card:hover{background:rgba(255,230,0,.04)}
+.chofer-card:last-child{border-bottom:none}
+.ch-avatar{
+  width:44px;height:44px;border-radius:50%;border:2px solid var(--border2);object-fit:cover;
+  background:var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0;
+}
+.ch-avatar img{width:100%;height:100%;object-fit:cover}
+.ch-info{flex:1;min-width:0}
+.ch-name{font-size:14px;font-weight:600}
+.ch-dni{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:2px}
+.ch-actions{display:flex;gap:6px}
+
+/* ── BADGE ── */
+.badge{padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:1px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase}
+.badge-y{background:rgba(255,230,0,.15);color:var(--y)}
+.badge-ok{background:rgba(0,230,118,.15);color:var(--ok)}
+.badge-err{background:rgba(255,68,68,.15);color:var(--err)}
+
+/* ── MODAL ── */
+.modal{position:fixed;inset:0;z-index:200;display:none;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px)}
+.modal-sheet{
+  position:relative;z-index:1;width:100%;max-width:500px;
+  background:var(--d);border:1px solid var(--border2);border-radius:20px 20px 0 0;
+  padding:20px;padding-bottom:max(20px,env(safe-area-inset-bottom));
+  animation:sheetUp .35s cubic-bezier(.16,1,.3,1);max-height:90dvh;overflow-y:auto;
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-family:'Bebas Neue';font-size:24px;letter-spacing:1.5px;color:var(--y);margin-bottom:18px}
+.modal-actions{display:flex;gap:10px;margin-top:18px}
+.modal-actions .btn{flex:1}
+
+/* ── CONFIRM DIALOG ── */
+.confirm-box{
+  position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;padding:24px;
+}
+.confirm-box.open{display:flex}
+.confirm-bg{position:absolute;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px)}
+.confirm-inner{
+  position:relative;z-index:1;background:var(--card);border:1px solid var(--border2);
+  border-radius:var(--r);padding:24px;width:100%;max-width:360px;animation:popIn .3s cubic-bezier(.34,1.56,.64,1);
+}
+.confirm-icon{font-size:40px;margin-bottom:12px}
+.confirm-title{font-family:'Bebas Neue';font-size:22px;letter-spacing:1px;color:var(--y);margin-bottom:8px}
+.confirm-msg{font-size:13px;color:var(--muted2);line-height:1.5;margin-bottom:20px}
+.confirm-actions{display:flex;gap:10px}
+.confirm-actions .btn{flex:1}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(120px);
+  background:var(--card2);border:1px solid var(--border2);border-radius:12px;
+  padding:11px 18px;font-size:13px;display:flex;align-items:center;gap:8px;
+  z-index:400;transition:transform .4s cubic-bezier(.16,1,.3,1);white-space:nowrap;max-width:88vw;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--ok)}
+.toast.err{border-color:var(--err)}
+.toast.warn{border-color:var(--warn)}
+
+/* ── SECTION TITLE ── */
+.section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-hd h3{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+
+/* ── SPINNER ── */
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--y);border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ── PHOTO UPLOAD ── */
+.photo-upload{
+  width:80px;height:80px;border-radius:50%;border:2px dashed var(--border2);
+  background:var(--b);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:28px;overflow:hidden;flex-shrink:0;transition:border-color .2s;
+}
+.photo-upload:hover{border-color:var(--y)}
+.photo-upload img{width:100%;height:100%;object-fit:cover;display:none}
+.photo-upload-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+
+/* ── FIN SESSION BTN ── */
+.fin-btn{
+  position:fixed;bottom:76px;right:16px;z-index:80;
+  background:var(--err);color:#fff;border:none;border-radius:50px;
+  padding:12px 18px;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(255,68,68,.4);
+  transition:transform .2s;
+}
+.fin-btn:hover{transform:scale(1.04)}
+.fin-btn.hidden{display:none}
+
+/* ── SETTINGS ── */
+.settings-section{margin-bottom:20px}
+.settings-section h3{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:10px}
+
+/* ── FIRMA DIGITAL ── */
+.sig-modal-wrap { padding: 0; }
+.sig-canvas-wrap {
+  position: relative;
+  background: #fff;
+  border-radius: var(--r2);
+  overflow: hidden;
+  touch-action: none;
+  margin-bottom: 12px;
+  border: 2px solid var(--border2);
+}
+#sigCanvas {
+  display: block;
+  width: 100%;
+  height: 180px;
+  cursor: crosshair;
+  touch-action: none;
+}
+.sig-guide {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #bbb;
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 1px;
+}
+.sig-line {
+  position: absolute;
+  bottom: 30px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: #ddd;
+  pointer-events: none;
+}
+.sig-preview-wrap {
+  display: none;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  padding: 12px;
+  margin-bottom: 14px;
+  align-items: center;
+  gap: 12px;
+}
+.sig-preview-wrap.has-sig { display: flex; }
+.sig-preview-wrap img { height: 50px; background: #fff; border-radius: 6px; padding: 4px; }
+.sig-preview-wrap span { font-size: 12px; color: var(--ok); }
+
+/* ── CANCELLED ALERT ── */
+#cancelledOverlay{
+  position:fixed;inset:0;z-index:10000;
+  background:#8B0000;
+  display:flex;align-items:center;justify-content:center;padding:24px;
+  opacity:0;transition:opacity .25s;
+}
+#cancelledOverlay.visible{ opacity:1; }
+#cancelledBox{
+  background:#1a0000;border:3px solid #FF4444;border-radius:20px;
+  padding:28px 22px;width:100%;max-width:400px;text-align:center;
+  animation:shake .4s cubic-bezier(.36,.07,.19,.97);
+}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  15%{transform:translateX(-8px) rotate(-1deg)}
+  30%{transform:translateX(8px) rotate(1deg)}
+  45%{transform:translateX(-6px)}
+  60%{transform:translateX(6px)}
+  75%{transform:translateX(-3px)}
+}
+.cancelled-icon{ font-size:64px; margin-bottom:12px; }
+.cancelled-title{
+  font-family:'Bebas Neue';font-size:42px;letter-spacing:3px;
+  color:#FF4444;line-height:1;margin-bottom:4px;
+  text-shadow:0 0 30px rgba(255,68,68,.6);
+}
+.cancelled-sub{
+  font-family:'IBM Plex Mono',monospace;font-size:13px;
+  color:#FF8888;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;
+}
+.cancelled-info{
+  background:rgba(255,0,0,.1);border:1px solid rgba(255,68,68,.3);
+  border-radius:12px;padding:14px;margin-bottom:16px;text-align:left;
+}
+.cancelled-row{
+  display:flex;justify-content:space-between;gap:8px;
+  padding:6px 0;border-bottom:1px solid rgba(255,68,68,.15);font-size:13px;
+}
+.cancelled-row:last-child{border-bottom:none}
+.cancelled-row span{color:#FF8888;font-size:11px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.cancelled-row strong{color:#fff;text-align:right;word-break:break-all}
+.cancelled-msg{
+  font-size:13px;color:#FF9999;line-height:1.5;margin-bottom:20px;
+}
+.cancelled-btn{
+  width:100%;padding:16px;background:#FF4444;color:#fff;
+  border:none;border-radius:12px;font-family:'Sora',sans-serif;
+  font-size:16px;font-weight:700;cursor:pointer;
+  touch-action:manipulation;min-height:56px;
+}
+.cancelled-btn:active{background:#cc2222}
+
+/* ── responsive ── */
+@media(min-width:480px){.scroll-area{max-width:480px;margin:0 auto}}
+</style>
+</head>
+<body>
+
+<div id="tabbar">
+  <button class="tab-btn active" id="tab-home" ontouchstart="tabTap(event,'home')" onclick="tabTap(event,'home')">
+    <span class="tab-icon">🏠</span><span>Inicio</span>
+  </button>
+  <button class="tab-btn" id="tab-scanner" ontouchstart="tabTap(event,'scanner')" onclick="tabTap(event,'scanner')">
+    <span class="tab-icon">📷</span><span>Scanner</span>
+  </button>
+  <button class="tab-btn" id="tab-status" ontouchstart="tabTap(event,'status')" onclick="tabTap(event,'status')">
+    <span class="tab-icon">📊</span><span>Estado</span><span id="pendingBadge" style="display:none;background:var(--err);color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-left:2px;font-weight:700"></span>
+  </button>
+  <button class="tab-btn" id="tab-choferes" ontouchstart="tabTap(event,'choferes')" onclick="tabTap(event,'choferes')">
+    <span class="tab-icon">🚗</span><span>Choferes</span>
+  </button>
+  <button class="tab-btn" id="tab-config" ontouchstart="tabTap(event,'config')" onclick="tabTap(event,'config')">
+    <span class="tab-icon">⚙️</span><span>Config</span>
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- VIEW: HOME (pantalla de inicio)           -->
+<!-- ══════════════════════════════════════════ -->
+<div class="view active" id="view-home">
+  <div class="scroll-area" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:0">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:56px;margin-bottom:8px">📦</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:var(--y)">TREKASHOP</div>
+      <div style="font-size:12px;color:var(--muted);letter-spacing:3px">RETIRO FLEX</div>
+    </div>
+
+    <!-- Connection status -->
+    <div id="homeConnStatus" style="
+      background:var(--card);border:1px solid var(--border);border-radius:12px;
+      padding:12px 20px;margin-bottom:20px;font-size:13px;color:var(--muted);
+      display:flex;align-items:center;gap:8px">
+      <span id="homeConnDot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block"></span>
+      <span id="homeConnText">Conectando con Mercado Libre…</span>
+    </div>
+
+    <!-- Account cards -->
+    <div style="width:100%;max-width:380px;display:flex;flex-direction:column;gap:10px;margin-bottom:24px" id="homeAccountCards">
+      <div class="account-card" id="card-trekashop">
+        <div class="ac-name">TREKASHOP</div>
+        <div class="ac-count" id="count-trekashop">…</div>
+        <div class="ac-label">para despachar</div>
+      </div>
+      <div class="account-card" id="card-treka1">
+        <div class="ac-name">TREKA1</div>
+        <div class="ac-count" id="count-treka1">…</div>
+        <div class="ac-label">para despachar</div>
+      </div>
+      <div class="account-card" id="card-factormarket">
+        <div class="ac-name">FACTORMARKET</div>
+        <div class="ac-count" id="count-factormarket">…</div>
+        <div class="ac-label">para despachar</div>
+      </div>
+    </div>
+
+    <!-- Total -->
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:48px;font-weight:700;color:var(--y);line-height:1" id="homeTotalCount">…</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">paquetes en total</div>
+    </div>
+
+    <!-- Buttons -->
+    <div style="width:100%;max-width:380px;display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-y btn-full" style="min-height:58px;font-size:18px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px"
+        onclick="startScanning()">
+        📷 EMPEZAR A ESCANEAR
+      </button>
+      <button class="btn btn-ghost btn-full" style="min-height:48px;font-size:14px"
+        onclick="reloadPendingHome()">
+        🔄 Actualizar info de ML
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- VIEW: SCANNER                              -->
+<!-- ══════════════════════════════════════════ -->
+<div class="view" id="view-scanner">
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-mark">📦</div>
+      <div class="nav-logo-text">
+        <strong>TREKASHOP</strong>
+        <span>Retiro Flex</span>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <div class="dot" id="scanDot"></div>
+    </div>
+  </nav>
+
+  <!-- Big number flash -->
+  <div class="big-number-display" id="bigNumDisplay">
+    <div class="pkg-num" id="bigNumValue">—</div>
+    <div class="pkg-id" id="bigNumId"></div>
+    <div class="pkg-who" id="bigNumWho"></div>
+  </div>
+
+  <div class="scroll-area">
+
+    <!-- Session bar -->
+    <div id="sessionBar" class="session-bar" style="display:none">
+      <div class="session-avatar" id="sessionAvatar">👤</div>
+      <div class="session-info">
+        <div class="session-name" id="sessionName">—</div>
+        <div class="session-dni" id="sessionDni">DNI —</div>
+      </div>
+      <div class="session-count" id="sessionCount">0 pkgs</div>
+    </div>
+
+    <!-- No session warning -->
+    <div id="noSessionWarn" class="card">
+      <div class="card-body" style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">⚠️</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px">Sin sesión activa</div>
+          <div style="font-size:12px;color:var(--muted)">Seleccioná un chofer en la pestaña Choferes para comenzar el retiro</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scanner -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-label">Cámara</span>
+        <div class="dot" id="camDot"></div>
+      </div>
+      <div class="scanner-wrap" id="scannerWrap">
+        <div class="cam-placeholder" id="camPH">
+          <div class="big">📷</div>
+          <p>Presioná <strong>Iniciar</strong> para escanear el código del paquete Flex</p>
+        </div>
+        <video id="preview" autoplay playsinline muted></video>
+
+        <div class="scan-overlay" id="scanOverlay">
+          <div class="scan-frame">
+            <div class="scan-frame-b"></div>
+            <div class="scan-line"></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:12px;display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1" id="camBtn" onclick="stopCamera()" style="display:none">⏹ Detener</button>
+        <button class="btn btn-ghost" id="flipBtn" style="display:none;padding:12px 14px" onclick="flipCamera()">🔄</button>
+      </div>
+    </div>
+
+    <!-- Manual -->
+    <div class="card">
+      <div class="card-head"><span class="card-label">ID Manual</span></div>
+      <div class="card-body">
+        <div class="inp-row">
+          <input class="inp" id="manualId" placeholder="Ej: 123456789012" />
+          <button class="btn btn-y" onclick="manualSearch()" style="flex:0;padding:12px 16px">🔍</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Package list -->
+    <div class="section-hd">
+      <h3>Paquetes en esta sesión</h3>
+      <span id="pkgTotal" style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">0 total</span>
+    </div>
+    <div class="card" id="pkgListCard">
+      <div class="pkg-empty" id="pkgEmpty">
+        <div class="ei">📋</div>
+        <div>Aún no hay paquetes escaneados</div>
+      </div>
+      <div id="pkgList"></div>
+    </div>
+
+  </div><!-- /scroll-area -->
+
+  <!-- FIN SESSION -->
+  <button class="fin-btn hidden" id="finBtn" onclick="askFin()">🏁 Finalizar retiro</button>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- VIEW: CHOFERES                            -->
+<!-- ══════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════ -->
+<!-- VIEW: ESTADO                              -->
+<!-- ══════════════════════════════════════════ -->
+<div class="view" id="view-status">
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-mark">📊</div>
+      <div class="nav-logo-text">
+        <strong>ESTADO DEL RETIRO</strong>
+        <span id="statusSubtitle">Resumen de la sesión</span>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <button onclick="reloadPending()" style="background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:12px;font-weight:600;padding:8px 12px;cursor:pointer;touch-action:manipulation;min-height:36px">🔄</button>
+    </div>
+  </nav>
+  <div class="scroll-area">
+
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+      <div id="statCardTotal" onclick="showStatusDetail('total')" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer">
+        <div style="font-size:26px;font-weight:700;color:var(--text)" id="statTotal">0</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">TOTAL ML</div>
+      </div>
+      <div id="statCardScanned" onclick="showStatusDetail('scanned')" style="background:var(--card);border:1px solid rgba(0,230,118,.3);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer">
+        <div style="font-size:26px;font-weight:700;color:var(--ok)" id="statScanned">0</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">ESCANEADOS</div>
+      </div>
+      <div id="statCardPending" onclick="showStatusDetail('pending')" style="background:var(--card);border:1px solid rgba(255,68,68,.3);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer">
+        <div style="font-size:26px;font-weight:700;color:var(--err)" id="statPending">0</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">FALTAN</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="background:var(--border);border-radius:99px;height:8px;margin-bottom:20px;overflow:hidden">
+      <div id="statProgressBar" style="height:100%;background:var(--ok);border-radius:99px;width:0%;transition:width .4s ease"></div>
+    </div>
+
+    <!-- Detail section -->
+    <div id="statusDetailSection">
+      <!-- filled by showStatusDetail() -->
+    </div>
+
+  </div>
+</div>
+
+<!-- CHOFERES: LIST SCREEN -->
+<div class="view" id="view-choferes">
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-mark">🚗</div>
+      <div class="nav-logo-text">
+        <strong>CHOFERES</strong>
+        <span>Gestión</span>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-y btn-sm" style="min-height:44px;padding:10px 20px;font-size:15px;touch-action:manipulation"
+        onclick="openChoferForm(null)">+ Nuevo</button>
+    </div>
+  </nav>
+  <div class="scroll-area">
+    <div class="card" id="choferListCard">
+      <div class="pkg-empty" id="choferEmpty">
+        <div class="ei">👥</div>
+        <div>No hay choferes registrados</div>
+      </div>
+      <div id="choferList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHOFERES: FORM SCREEN (separate full view — no modal, no transform) -->
+<div class="view" id="view-chofer-form">
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-mark">✏️</div>
+      <div class="nav-logo-text">
+        <strong id="choferFormTitle">NUEVO CHOFER</strong>
+        <span>Datos del conductor</span>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <button class="btn btn-ghost btn-sm" style="min-height:44px;padding:10px 16px;font-size:15px;touch-action:manipulation"
+        onclick="closeChoferForm()">← Volver</button>
+    </div>
+  </nav>
+  <div class="scroll-area">
+    <input type="hidden" id="choferEditId"/>
+
+    <!-- PHOTO — plain input in a real page, no modal, no transform blocking it -->
+    <div class="card">
+      <div class="card-head"><span class="card-label">Foto del chofer</span></div>
+      <div class="card-body" style="display:flex;align-items:center;gap:16px">
+        <div id="photoCircle" style="
+          width:80px;height:80px;border-radius:50%;border:3px dashed var(--border2);
+          background:var(--b);flex-shrink:0;overflow:hidden;position:relative;
+          display:flex;align-items:center;justify-content:center;">
+          <img id="photoPreview" alt="" style="display:none;width:100%;height:100%;object-fit:cover"/>
+          <span id="photoIcon" style="font-size:32px">👤</span>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600;margin-bottom:6px">Subir foto</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cámara o galería</div>
+          <!-- Photo button triggers hidden input at body level (most reliable on Android) -->
+          <button onclick="document.getElementById('photoFileMaster').click()"
+            style="
+              display:flex;align-items:center;justify-content:center;gap:10px;
+              background:var(--y);color:var(--b);
+              padding:16px 24px;border-radius:12px;width:100%;
+              font-family:Sora,sans-serif;font-size:16px;font-weight:700;
+              min-height:56px;border:none;cursor:pointer;touch-action:manipulation;">
+            📷 Agregar foto del chofer
+          </button>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px">
+            Tocá para abrir cámara o galería
+          </div>
+          <div id="photoStatus" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-body">
+      <div class="field"><label>Nombre completo</label>
+        <input class="inp" id="choferName" placeholder="Ej: Juan Pérez" autocomplete="off" style="font-size:16px"/>
+      </div>
+      <div class="field" style="margin-bottom:0"><label>DNI</label>
+        <input class="inp" id="choferDNI" placeholder="Ej: 30123456" inputmode="numeric" autocomplete="off" style="font-size:16px"/>
+      </div>
+    </div></div>
+
+    <button class="btn btn-y btn-full" style="min-height:56px;font-size:17px;margin-bottom:12px;touch-action:manipulation"
+      onclick="saveChofer()">💾 Guardar chofer</button>
+
+    <div id="choferDeleteRow" style="display:none">
+      <button class="btn btn-danger btn-full" style="min-height:50px;font-size:15px;touch-action:manipulation"
+        onclick="deleteChofer()">🗑 Eliminar chofer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- VIEW: CONFIGURACIÓN                       -->
+<!-- ══════════════════════════════════════════ -->
+<div class="view" id="view-config">
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-mark">⚙️</div>
+      <div class="nav-logo-text">
+        <strong>CONFIGURACIÓN</strong>
+        <span>API y Email</span>
+      </div>
+    </div>
+  </nav>
+  <div class="scroll-area">
+
+    <div class="settings-section">
+      <h3>Mercado Libre</h3>
+      <div class="card"><div class="card-body">
+        <div class="field"><label>Access Token</label><input class="inp" id="cfgMLToken" type="password" placeholder="APP_USR-..."/></div>
+      </div></div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Email (SendGrid)</h3>
+      <div class="card"><div class="card-body">
+        <div class="field"><label>API Key SendGrid</label><input class="inp" id="cfgSGKey" type="password" placeholder="SG...."/></div>
+        <div class="field"><label>Email remitente</label><input class="inp" id="cfgSGFrom" type="email" placeholder="retiros@trekashop.com"/></div>
+        <div class="field"><label>Email destino por defecto</label><input class="inp" id="cfgEmail" type="email" placeholder="admin@trekashop.com"/></div>
+      </div></div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Demo</h3>
+      <div class="card"><div class="card-body">
+        <p style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:12px">Sin credenciales la app funciona en modo demo con datos simulados. Configurá las APIs arriba para conectarte a Mercado Libre y enviar emails reales.</p>
+        <div id="cfgStatus" class="badge badge-y">MODO DEMO</div>
+      </div></div>
+    </div>
+
+    <button class="btn btn-y btn-full" onclick="saveConfig()">💾 Guardar configuración</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- TAB BAR                                  -->
+<!-- ══════════════════════════════════════════ -->
+
+
+<!-- chofer form is now view-chofer-form -->
+
+<!-- ══════════════════════════════════════════ -->
+<!-- MODAL: INICIAR SESIÓN (seleccionar chofer)-->
+<!-- ══════════════════════════════════════════ -->
+<div class="modal" id="sessionModal">
+  <div class="modal-bg" ontouchstart="closeSessionModal()" onclick="closeSessionModal()"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">¿Quién retira?</div>
+    <p style="font-size:13px;color:var(--muted2);margin-bottom:16px">Asigná el chofer antes de enviar el retiro</p>
+    <div id="sessionChoferList"></div>
+    <button class="btn btn-ghost btn-full" style="margin-top:12px;min-height:52px;font-size:15px"
+      ontouchstart="closeSessionModal()" onclick="closeSessionModal()">✕ Cancelar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- CONFIRM: FINALIZAR RETIRO                 -->
+<!-- ══════════════════════════════════════════ -->
+<div class="confirm-box" id="confirmFin">
+  <div class="confirm-bg"></div>
+  <div class="confirm-inner" style="max-height:85vh;overflow-y:auto">
+    <div class="confirm-icon">🏁</div>
+    <div class="confirm-title">Finalizar Retiro</div>
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <div style="flex:1;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--ok)" id="confirmFinCount">0</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Escaneados</div>
+      </div>
+      <div style="flex:1;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:28px;font-weight:700;color:var(--err)" id="confirmPendingCount">0</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Pendientes</div>
+      </div>
+    </div>
+
+    <!-- Pending list (hidden by default) -->
+    <div id="pendingListWrap" style="display:none;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:var(--err);margin-bottom:8px">📋 Paquetes sin escanear:</div>
+      <div id="pendingList" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+    <div class="confirm-actions" style="flex-direction:column;gap:8px">
+      <button class="btn btn-ghost btn-full" id="btnVerPendientes" onclick="togglePendingList()" style="display:none">👁 Ver pendientes</button>
+      <button class="btn btn-y btn-full" onclick="askEmail()">✉️ Cerrar y enviar email</button>
+      <button class="btn btn-ghost btn-full" onclick="addMorePkgs()">📦 Seguir escaneando</button>
+      <button class="btn btn-danger btn-full" onclick="cancelFin()">✕ Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM: SEGURO? -->
+<div class="confirm-box" id="confirmSend">
+  <div class="confirm-bg"></div>
+  <div class="confirm-inner">
+    <div class="confirm-icon">✉️</div>
+    <div class="confirm-title">Confirmar envío</div>
+    <div style="margin-bottom:14px">
+      <div class="field"><label>Email destino</label><input class="inp" id="sendEmailInp" type="email" placeholder="admin@trekashop.com"/></div>
+    </div>
+    <div class="sig-preview-wrap" id="sigPreviewWrap">
+      <img id="sigPreviewImg" src="" alt="Firma"/>
+      <span>✅ Firma capturada</span>
+    </div>
+    <div id="sigMissingWarn" style="display:none;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--err);margin-bottom:12px">
+      ⚠️ El chofer aún no firmó. <button class="btn btn-ghost btn-sm" onclick="openSigFromConfirm()" style="margin-left:8px">Firmar ahora</button>
+    </div>
+    <div class="confirm-msg">¿Estás seguro de que querés enviar el listado de retiro?</div>
+    <div class="confirm-actions" style="margin-top:12px">
+      <button class="btn btn-y" onclick="doSendEmail()">Sí, enviar</button>
+      <button class="btn btn-ghost" onclick="closeConfirmSend()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- TOAST                                     -->
+<!-- ════════════════════════════════════════════ -->
+<!-- MODAL: FIRMA DIGITAL                        -->
+<!-- ════════════════════════════════════════════ -->
+<div class="modal" id="sigModal">
+  <div class="modal-bg"></div>
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✍️ Firma del Chofer</div>
+    <p style="font-size:13px;color:var(--muted2);margin-bottom:14px">
+      <strong id="sigChoferName"></strong> — firmá en el recuadro para confirmar el retiro
+    </p>
+    <div class="sig-canvas-wrap">
+      <canvas id="sigCanvas"></canvas>
+      <div class="sig-line"></div>
+      <div class="sig-guide">FIRMAR AQUÍ</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-ghost btn-sm" onclick="clearSignature()" style="flex:0">🗑 Limpiar</button>
+      <div style="flex:1;font-size:11px;color:var(--muted);display:flex;align-items:center;padding-left:8px" id="sigStatus">Sin firma aún</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-y" id="sigConfirmBtn" ontouchstart="confirmSignature()" onclick="confirmSignature()" style="opacity:.4;pointer-events:none;touch-action:manipulation">✅ Confirmar firma</button>
+      <button class="btn btn-ghost" onclick="closeSigModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- SCRIPT                                    -->
+<!-- ══════════════════════════════════════════ -->
+<script>
+// ─── STATE ───────────────────────────────────
+let cfg = JSON.parse(localStorage.getItem('ts_cfg') || '{}');
+
+// ─── ML via PROXY ────────────────────────────
+let mlTokens = { proxy: true }; // proxy handles auth
+let pendingShipments = [];
+let pendingLoaded = false;
+
+async function refreshMLTokens() {
+  return true; // proxy handles tokens
+}
+
+// ─── FETCH PENDING SHIPMENTS ─────────────────
+async function reloadPending() {
+  const btn = document.getElementById('btnRefreshMLLabel');
+  if(btn) btn.textContent = 'Cargando…';
+  mlTokens = {}; // force token refresh
+  pendingLoaded = false;
+  await loadPendingShipments();
+  if(btn) btn.textContent = 'Actualizar';
+  toast(`🔄 ${pendingShipments.length} envíos cargados`,'ok');
+}
+
+async function loadPendingShipments() {
+  pendingShipments = [];
+  const badge = document.getElementById('pendingBadge');
+  if(badge) { badge.textContent = '…'; badge.style.display='inline-block'; }
+  try {
+    const r = await fetch('/.netlify/functions/ml-proxy');
+    if(!r.ok) throw new Error(`Proxy HTTP ${r.status}`);
+    const data = await r.json();
+    if(data.error) throw new Error(data.error);
+    pendingShipments = data.shipments || [];
+    console.log('Proxy OK — total:', data.total, 'counts:', data.counts);
+    if(data.errors?.length) console.warn('Proxy errors:', data.errors);
+  } catch(e) {
+    console.error('loadPendingShipments:', e.message);
+    toast('⚠️ Error ML: ' + e.message, 'err');
+  }
+  pendingLoaded = true;
+  updatePendingBadge();
+  updateHomeUI('done');
+  console.log(`Loaded ${pendingShipments.length} pending shipments`);
+}
+
+function updatePendingBadge() {
+  const badge = document.getElementById('pendingBadge');
+  if(!badge) return;
+  const scannedIds = session?.packages?.map(p=>p.shipmentId) || [];
+  const remaining = pendingShipments.filter(s => !scannedIds.includes(s.shipmentId));
+  badge.textContent = pendingShipments.length > 0 ? pendingShipments.length : '';
+  badge.style.display = pendingShipments.length > 0 ? 'inline-block' : 'none';
+}
+
+
+let choferes = JSON.parse(localStorage.getItem('ts_choferes') || '[]');
+let session = null; // { chofer, startTime, packages:[] }
+let codeReader = null;
+let cameraOn = false;
+let facingMode = 'environment';
+let currentPhotoB64 = null;
+let editingPhotoCurrent = null;
+let beepCtx = null;
+
+// ─── AUDIO ───────────────────────────────────
+function getAudioCtx() {
+  if (!beepCtx) beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return beepCtx;
+}
+function beep(freq=880, dur=0.12, type='sine', vol=0.4) {
+  try {
+    const ctx = getAudioCtx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    o.start(); o.stop(ctx.currentTime + dur);
+  } catch(e){}
+}
+function beepOk() { beep(880, .12); setTimeout(()=>beep(1320,.1),120); }
+function beepDup() { beep(300,.2,'sawtooth',.3); setTimeout(()=>beep(250,.2,'sawtooth',.3),220); }
+function beepErr() { beep(200,.3,'sawtooth',.4); }
+
+// ─── VIEWS ───────────────────────────────────
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  const tabEl = document.getElementById('tab-'+name);
+  if(tabEl) tabEl.classList.add('active');
+  if(name === 'scanner' && !cameraOn) setTimeout(() => startCamera(), 300);
+  if(name !== 'scanner' && cameraOn) stopCamera();
+  if(name === 'status') updateStatusView();
+}
+
+let _lastTabTap = 0;
+function tabTap(e, name) {
+  e.preventDefault();
+  e.stopPropagation();
+  const now = Date.now();
+  if(now - _lastTabTap < 300) return; // debounce double-fire from touch+click
+  _lastTabTap = now;
+
+  // Vibrate
+  try { navigator.vibrate && navigator.vibrate(30); } catch(err){}
+
+  // Animate
+  const btn = document.getElementById('tab-'+name);
+  btn.classList.add('tap-anim');
+  setTimeout(()=>btn.classList.remove('tap-anim'), 250);
+
+  // Switch
+  switchView(name);
+}
+
+
+
+// ─── HOME VIEW ───────────────────────────────
+function startScanning() {
+  switchView('scanner');
+  // update tab active state
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-scanner').classList.add('active');
+}
+
+async function reloadPendingHome() {
+  updateHomeUI('loading');
+  await reloadPending();
+  updateHomeUI('done');
+}
+
+function updateHomeUI(state) {
+  const dot = document.getElementById('homeConnDot');
+  const txt = document.getElementById('homeConnText');
+  const total = document.getElementById('homeTotalCount');
+
+  if(state === 'loading') {
+    dot.style.background = 'var(--y)';
+    txt.textContent = 'Actualizando…';
+    ['trekashop','treka1','factormarket'].forEach(a => {
+      const el = document.getElementById('count-'+a);
+      if(el) el.textContent = '…';
+    });
+    if(total) total.textContent = '…';
+    return;
+  }
+
+  const connected = pendingLoaded;
+  dot.style.background = connected ? 'var(--ok)' : 'var(--y)';
+  txt.textContent = connected ? `✅ Conectado · ${pendingShipments.length} envíos cargados` : '🔄 Conectando con Mercado Libre…';
+
+  // Per-account counts
+  let totalCount = 0;
+  ['trekashop','treka1','factormarket'].forEach(a => {
+    const count = pendingShipments.filter(s => s.account === a).length;
+    totalCount += count;
+    const el = document.getElementById('count-'+a);
+    if(el) el.textContent = count;
+    const card = document.getElementById('card-'+a);
+    if(card) card.style.borderColor = count > 0 ? 'rgba(255,230,0,.3)' : 'var(--border)';
+  });
+  if(total) total.textContent = totalCount;
+}
+
+// ─── STATUS VIEW ─────────────────────────────
+function updateStatusView() {
+  const scannedIds = session?.packages?.map(p=>p.shipmentId) || [];
+  const total = pendingShipments.length;
+  const scanned = scannedIds.filter(id => pendingShipments.find(s=>s.shipmentId===id)).length;
+  const pending = pendingShipments.filter(s => !scannedIds.includes(s.shipmentId));
+  const pct = total > 0 ? Math.round(scanned/total*100) : 0;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statScanned').textContent = scanned;
+  document.getElementById('statPending').textContent = pending.length;
+  document.getElementById('statProgressBar').style.width = pct + '%';
+  document.getElementById('statusSubtitle').textContent =
+    total > 0 ? `${pct}% completado · ${total} envíos ML` : 'Cargando de ML…';
+
+  // Clear detail
+  document.getElementById('statusDetailSection').innerHTML = '';
+}
+
+function showStatusDetail(type) {
+  const scannedIds = session?.packages?.map(p=>p.shipmentId) || [];
+  let items = [];
+  let title = '';
+  let color = 'var(--text)';
+
+  if(type === 'total') {
+    items = pendingShipments;
+    title = `Todos los envíos ML (${items.length})`;
+    color = 'var(--text)';
+  } else if(type === 'scanned') {
+    items = (session?.packages || []).map(p => ({
+      shipmentId: p.shipmentId,
+      recipientName: p.recipientName,
+      address: p.address,
+      account: p.mlAccount || p.isDemo ? 'demo' : '—',
+      orderTime: p.scannedAt ? new Date(p.scannedAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : null,
+      orderId: p.orderId,
+    }));
+    title = `Escaneados (${items.length})`;
+    color = 'var(--ok)';
+  } else if(type === 'pending') {
+    items = pendingShipments.filter(s => !scannedIds.includes(s.shipmentId));
+    title = `Faltan escanear (${items.length})`;
+    color = 'var(--err)';
+  }
+
+  const sec = document.getElementById('statusDetailSection');
+  if(!items.length) { sec.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px">Sin datos</div>`; return; }
+
+  sec.innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:10px">${title}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${items.map(s => `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">${s.recipientName}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.account || ''} · ID ${s.shipmentId}</div>
+              ${s.address && s.address!=='—' ? `<div style="font-size:11px;color:var(--muted2);margin-top:2px">${s.address}</div>` : ''}
+              ${s.orderId && s.orderId!=='—' ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">Orden: ${s.orderId}</div>` : ''}
+            </div>
+            ${s.orderTime ? `<div style="font-size:15px;font-weight:700;color:var(--y);flex-shrink:0;margin-left:8px">${s.orderTime}</div>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ─── CONFIG ──────────────────────────────────
+function loadConfig() {
+  document.getElementById('cfgMLToken').value = cfg.mlToken || '';
+  document.getElementById('cfgSGKey').value = cfg.sgKey || '';
+  document.getElementById('cfgSGFrom').value = cfg.sgFrom || '';
+  document.getElementById('cfgEmail').value = cfg.email || '';
+  updateCfgStatus();
+}
+function saveConfig() {
+  cfg = {
+    mlToken: document.getElementById('cfgMLToken').value.trim(),
+    sgKey: document.getElementById('cfgSGKey').value.trim(),
+    sgFrom: document.getElementById('cfgSGFrom').value.trim(),
+    email: document.getElementById('cfgEmail').value.trim(),
+  };
+  localStorage.setItem('ts_cfg', JSON.stringify(cfg));
+  updateCfgStatus();
+  toast('✅ Configuración guardada','ok');
+}
+function updateCfgStatus() {
+  const el = document.getElementById('cfgStatus');
+  if(cfg.mlToken && cfg.sgKey) {
+    el.textContent='CONECTADO A ML + SENDGRID'; el.className='badge badge-ok';
+  } else if(cfg.mlToken) {
+    el.textContent='SOLO ML (sin email real)'; el.className='badge badge-y';
+  } else {
+    el.textContent='MODO DEMO'; el.className='badge badge-y';
+  }
+}
+
+// ─── SESSION ─────────────────────────────────
+function startSession(chofer) {
+  session = { chofer, startTime: new Date().toISOString(), packages: [], signature: null };
+  updateSessionUI();
+  closeSessionModal();
+  toast(`✅ Sesión iniciada: ${chofer.name}`,'ok');
+}
+
+function updateSessionUI() {
+  const bar = document.getElementById('sessionBar');
+  const warn = document.getElementById('noSessionWarn');
+  const fin = document.getElementById('finBtn');
+
+  if(!session) {
+    bar.style.display='none'; warn.style.display=''; fin.classList.add('hidden');
+    return;
+  }
+  bar.style.display='flex'; warn.style.display='none'; fin.classList.remove('hidden');
+
+  // Avatar
+  const av = document.getElementById('sessionAvatar');
+  if(session.chofer?.photo) {
+    av.innerHTML=`<img src="${session.chofer.photo}" alt=""/>`;
+  } else {
+    av.innerHTML='👤';
+  }
+  document.getElementById('sessionName').textContent = session.chofer?.name || 'Sin asignar';
+  document.getElementById('sessionDni').textContent = session.chofer ? 'DNI ' + session.chofer.dni : 'Elegí chofer al finalizar';
+  document.getElementById('sessionCount').textContent = session.packages.length + ' pkgs';
+
+  // Signature indicator in session bar
+  const sigIndicator = document.getElementById('sessionSigIndicator');
+  if(sigIndicator) sigIndicator.textContent = session.signature ? '✍️' : '⬜';
+  document.getElementById('pkgTotal').textContent = session.packages.length + ' total';
+
+  renderPkgList();
+}
+
+// ─── CHOFER MODAL ────────────────────────────
+// openChoferModal replaced by openChoferForm above
+
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    currentPhotoB64 = ev.target.result;
+    const prev = document.getElementById('photoPreview');
+    const icon = document.getElementById('photoIcon');
+    const status = document.getElementById('photoStatus');
+    if(prev) { prev.src = currentPhotoB64; prev.style.display = 'block'; }
+    if(icon) icon.style.display = 'none';
+    if(status) { status.textContent = '✅ Foto lista'; status.style.color='var(--ok)'; }
+    toast('📷 Foto cargada','ok');
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function openChoferForm(id=null) {
+  document.getElementById('choferEditId').value = id || '';
+  document.getElementById('choferName').value = '';
+  document.getElementById('choferDNI').value = '';
+  document.getElementById('choferFormTitle').textContent = id ? 'EDITAR CHOFER' : 'NUEVO CHOFER';
+  document.getElementById('choferDeleteRow').style.display = id ? 'block' : 'none';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('photoPreview').src = '';
+  document.getElementById('photoIcon').style.display = '';
+  document.getElementById('photoStatus').textContent = '';
+  currentPhotoB64 = null;
+  editingPhotoCurrent = null;
+  if(id) {
+    const ch = choferes.find(c=>c.id===id);
+    if(ch) {
+      document.getElementById('choferName').value = ch.name;
+      document.getElementById('choferDNI').value = ch.dni;
+      if(ch.photo) {
+        document.getElementById('photoPreview').src = ch.photo;
+        document.getElementById('photoPreview').style.display = 'block';
+        document.getElementById('photoIcon').style.display = 'none';
+        editingPhotoCurrent = ch.photo;
+        document.getElementById('photoStatus').textContent = '✅ Foto cargada';
+      }
+    }
+  }
+  // Navigate to form view
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-chofer-form').classList.add('active');
+}
+
+function closeChoferForm() {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-choferes').classList.add('active');
+}
+
+// Keep old names as aliases so nothing breaks
+function openChoferModal(id) { openChoferForm(id); }
+function closeChoferModal() { closeChoferForm(); }
+
+let _savingChofer = false;
+function saveChofer() {
+  if(_savingChofer) return; _savingChofer=true; setTimeout(()=>_savingChofer=false,800);
+  const name = document.getElementById('choferName').value.trim();
+  const dni = document.getElementById('choferDNI').value.trim();
+  if(!name || !dni) { toast('⚠️ Completá nombre y DNI','err'); return; }
+  const id = document.getElementById('choferEditId').value;
+  const photo = currentPhotoB64 || editingPhotoCurrent || null;
+  if(id) {
+    const idx = choferes.findIndex(c=>c.id===id);
+    if(idx>=0) choferes[idx] = {...choferes[idx], name, dni, photo};
+  } else {
+    choferes.push({ id: 'ch_'+Date.now(), name, dni, photo });
+  }
+  localStorage.setItem('ts_choferes', JSON.stringify(choferes));
+  closeChoferForm();
+  renderChoferList();
+  try{navigator.vibrate&&navigator.vibrate(40);}catch(e){}
+  toast('✅ Chofer guardado','ok');
+}
+
+let _deletingChofer = false;
+function deleteChofer() {
+  if(_deletingChofer) return; _deletingChofer=true; setTimeout(()=>_deletingChofer=false,800);
+  const id = document.getElementById('choferEditId').value;
+  choferes = choferes.filter(c=>c.id!==id);
+  localStorage.setItem('ts_choferes', JSON.stringify(choferes));
+  closeChoferForm();
+  renderChoferList();
+  toast('🗑 Chofer eliminado');
+}
+
+function renderChoferList() {
+  const list = document.getElementById('choferList');
+  const empty = document.getElementById('choferEmpty');
+  if(!choferes.length) { list.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  list.innerHTML = choferes.map(ch=>`
+    <div class="chofer-card">
+      <div class="ch-avatar">${ch.photo?`<img src="${ch.photo}" alt=""/>`:'👤'}</div>
+      <div class="ch-info">
+        <div class="ch-name">${ch.name}</div>
+        <div class="ch-dni">DNI ${ch.dni}</div>
+      </div>
+      <div class="ch-actions">
+        <button class="btn btn-y btn-sm" style="min-height:44px;padding:8px 16px"
+          ontouchstart="selectChoferSession('${ch.id}')" onclick="selectChoferSession('${ch.id}')">Iniciar</button>
+        <button class="btn btn-ghost btn-sm" style="min-height:44px;padding:8px 14px"
+          ontouchstart="openChoferForm('${ch.id}')" onclick="openChoferForm('${ch.id}')">✏️</button>
+      </div>
+    </div>`).join('');
+}
+
+// ─── SESSION MODAL ───────────────────────────
+function openSessionModal() {
+  const list = document.getElementById('sessionChoferList');
+  if(!choferes.length) {
+    list.innerHTML=`<div style="text-align:center;padding:20px">
+      <div style="font-size:36px;margin-bottom:10px">👥</div>
+      <p style="font-size:14px;color:var(--muted2);margin-bottom:16px">No hay choferes registrados.</p>
+      <button class="btn btn-y btn-full" style="min-height:52px;font-size:15px"
+        ontouchstart="closeSessionModal();tabTap(event,'choferes')" onclick="closeSessionModal();tabTap(event,'choferes')">
+        + Ir a agregar chofer
+      </button>
+    </div>`;
+  } else {
+    list.innerHTML = choferes.map(ch=>`
+      <div class="chofer-card" style="min-height:64px;cursor:pointer"
+        ontouchstart="selectChoferSession('${ch.id}')" onclick="selectChoferSession('${ch.id}')">
+        <div class="ch-avatar">${ch.photo?`<img src="${ch.photo}" alt=""/>`:'👤'}</div>
+        <div class="ch-info">
+          <div class="ch-name" style="font-size:16px">${ch.name}</div>
+          <div class="ch-dni">DNI ${ch.dni}</div>
+        </div>
+        <span style="color:var(--y);font-size:28px;font-weight:bold">›</span>
+      </div>`).join('');
+  }
+  document.getElementById('sessionModal').classList.add('open');
+}
+function closeSessionModal() { document.getElementById('sessionModal').classList.remove('open'); }
+function selectChoferSession(id) {
+  const ch = choferes.find(c=>c.id===id);
+  if(ch) { try{navigator.vibrate&&navigator.vibrate(30);}catch(e){} startSession(ch); }
+}
+
+// ─── CAMERA ──────────────────────────────────
+async function toggleCamera() {
+  if(!session) { openSessionModal(); return; }
+  if(cameraOn) stopCamera(); else await startCamera();
+}
+
+async function startCamera() {
+  // Check if mediaDevices API exists at all
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showCameraError('Tu navegador no soporta acceso a la cámara. Abrí la app en Chrome.');
+    return;
+  }
+  try {
+    const video = document.getElementById('preview');
+    // Start simple — just ask for video, no fancy constraints
+    // If html5-qrcode available, let IT handle camera + scanning entirely
+    if(window._useHtml5QR && window.Html5Qrcode) {
+      document.getElementById('qr-reader-div').style.display='block';
+      document.getElementById('camPH').style.display='none';
+      document.getElementById('scanOverlay').style.display='none';
+      document.getElementById('camDot').className='dot on';
+      document.getElementById('scanDot').className='dot on';
+      const camBtnEl=document.getElementById('camBtn'); if(camBtnEl){camBtnEl.style.display='inline-flex';camBtnEl.textContent='⏹ Detener';}
+      document.getElementById('flipBtn').style.display='flex';
+      cameraOn=true;
+      startHtml5QR();
+      return;
+    }
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facingMode } }
+      });
+    } catch(e1) {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    }
+    video.srcObject = stream;
+    video.style.display='block';
+    document.getElementById('camPH').style.display='none';
+    document.getElementById('scanOverlay').style.display='flex';
+    document.getElementById('camDot').className='dot on';
+    document.getElementById('scanDot').className='dot on';
+    const camBtnEl=document.getElementById('camBtn'); if(camBtnEl){camBtnEl.style.display='inline-flex';camBtnEl.textContent='⏹ Detener';}
+    document.getElementById('flipBtn').style.display='flex';
+    cameraOn=true;
+
+    // Load scanner
+    if(window._useHtml5QR && window.Html5Qrcode) {
+      startHtml5QR();
+    } else if(window.ZXingBrowser) {
+      startZXing(video);
+    } else {
+      toast('ℹ️ Cargando escáner...','warn');
+      loadZXing().then(()=>{ if(cameraOn) startZXing(video); });
+    }
+  } catch(e) {
+    const name = e.name || '';
+    const msg = e.message || '';
+    let friendly = '';
+    if(name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+      friendly = 'Permiso de cámara denegado. Andá a Ajustes → Chrome → Permisos → Cámara y activalo.';
+    } else if(name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+      friendly = 'No se encontró ninguna cámara en este dispositivo.';
+    } else if(name === 'NotReadableError' || name === 'TrackStartError') {
+      friendly = 'La cámara está siendo usada por otra app. Cerrá las otras apps y probá de nuevo.';
+    } else if(name === 'OverconstrainedError') {
+      friendly = 'La cámara no soporta la configuración pedida.';
+    } else if(location.protocol !== 'https:') {
+      friendly = 'La app necesita abrirse con HTTPS para acceder a la cámara.';
+    } else {
+      friendly = `Error: ${name || msg || 'desconocido'}. Probá recargar la página.`;
+    }
+    showCameraError(friendly);
+    document.getElementById('camDot').className='dot err';
+  }
+}
+
+function showCameraError(msg) {
+  const ph = document.getElementById('camPH');
+  ph.style.display='flex';
+  ph.innerHTML = `
+    <div style="font-size:36px;margin-bottom:10px">📵</div>
+    <div style="font-size:14px;font-weight:600;color:var(--err);margin-bottom:8px">Sin acceso a la cámara</div>
+    <div style="font-size:12px;color:var(--muted2);line-height:1.6;text-align:center">${msg}</div>
+  `;
+  toast('❌ Sin acceso a la cámara','err');
+}
+
+function loadZXing() {
+  return new Promise(res => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    s.onload = () => { window._jsQRloaded = true; res(); };
+    s.onerror = () => res(); // fail silently, manual input still works
+    document.head.appendChild(s);
+  });
+}
+
+function startZXing(video) {
+  if(!window.jsQR) { toast('⚠️ Escáner cargando...','warn'); return; }
+  // Use canvas to grab frames and decode with jsQR
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  let scanning = true;
+  window._scanningActive = true;
+
+  let lastQRScan = 0;
+  function tick() {
+    if(!window._scanningActive || !cameraOn) return;
+    if(video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const now = Date.now();
+      // Only decode every 300ms to save CPU, but keep looping always
+      if(now - lastQRScan > 150) {
+        lastQRScan = now;
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert'
+        });
+        if(code && code.data) {
+          handleScan(code.data);
+          // After a scan, pause 2.5s (same as handleScan debounce) then reset
+          // so scanner is immediately ready for next code
+          lastQRScan = now + 2500;
+        }
+      }
+    }
+    requestAnimationFrame(tick); // always continue
+  }
+  requestAnimationFrame(tick);
+}
+
+function stopCamera() {
+  window._scanningActive = false;
+  if(window._zxingControls) { try{ window._zxingControls.stop(); }catch(e){} window._zxingControls=null; }
+  const video = document.getElementById('preview');
+  if(video.srcObject) { video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; }
+  video.style.display='none';
+  document.getElementById('camPH').style.display='flex';
+  document.getElementById('scanOverlay').style.display='none';
+  document.getElementById('camDot').className='dot';
+  document.getElementById('scanDot').className='dot';
+  const camBtnEl2=document.getElementById('camBtn'); if(camBtnEl2){camBtnEl2.style.display='none';}
+  document.getElementById('flipBtn').style.display='none';
+  cameraOn=false;
+}
+
+async function flipCamera() {
+  facingMode = facingMode==='environment'?'user':'environment';
+  stopCamera(); await startCamera();
+}
+
+// ─── SCAN HANDLER ────────────────────────────
+let lastScanTime=0;
+async function handleScan(raw) {
+  const now=Date.now();
+  if(now-lastScanTime<2000) return; // debounce
+  lastScanTime=now;
+
+  // Auto-create anonymous session if none exists
+  if(!session) {
+    session = { chofer: null, startTime: new Date().toISOString(), packages: [], signature: null, cancelledIds: [], cancelledCache: {} };
+  }
+
+  const shipId = extractId(raw);
+
+  // If previously flagged as cancelled — re-show the alert immediately
+  if(session.cancelledIds && session.cancelledIds.includes(shipId)) {
+    beepErr();
+    toast('🚫 ¡PAQUETE CANCELADO! No entregar','err');
+    // Re-trigger the cancelled alert with cached data
+    const cached = session.cancelledCache && session.cancelledCache[shipId];
+    if(cached) { showCancelledAlert(cached); return; }
+    // fallback: lookup again
+    await lookupPackage(shipId, raw);
+    return;
+  }
+
+  // Check duplicate (already added OK packages)
+  if(session.packages.find(p=>p.shipmentId===shipId)) {
+    beepDup();
+    toast('⚠️ Paquete ya escaneado','warn');
+    return;
+  }
+
+  beepOk();
+  showBigNum(session.packages.length+1, shipId, session.chofer?.name || '');
+  await lookupPackage(shipId, raw);
+}
+
+function extractId(text) {
+  const u=text.match(/shipments?[\/=](\d+)/i); if(u) return u[1];
+  const n=text.match(/\d{8,}/); if(n) return n[0];
+  return text.trim().replace(/\W/g,'').slice(0,20) || text.trim();
+}
+
+function showBigNum(num, id, who) {
+  const d=document.getElementById('bigNumDisplay');
+  document.getElementById('bigNumValue').textContent=num;
+  document.getElementById('bigNumId').textContent='ID: '+id;
+  document.getElementById('bigNumWho').textContent='Chofer: '+who;
+  d.style.display='flex';
+  clearTimeout(window._bigNumTimer);
+  window._bigNumTimer=setTimeout(()=>{ d.style.display='none'; },3500);
+}
+
+// ─── PACKAGE LOOKUP ──────────────────────────
+async function manualSearch() {
+  if(!session) {
+    session = { chofer: null, startTime: new Date().toISOString(), packages: [], signature: null, cancelledIds: [], cancelledCache: {} };
+  }
+  const val=document.getElementById('manualId').value.trim();
+  if(!val) { toast('⚠️ Ingresá un ID','err'); return; }
+  const shipId=extractId(val);
+  if(session.cancelledIds && session.cancelledIds.includes(shipId)) {
+    beepErr(); toast('🚫 ¡PAQUETE CANCELADO! No entregar','err');
+    const cached = session.cancelledCache && session.cancelledCache[shipId];
+    if(cached) { showCancelledAlert(cached); document.getElementById('manualId').value=''; return; }
+  }
+  if(session.packages.find(p=>p.shipmentId===shipId)) {
+    beepDup(); toast('⚠️ Paquete ya escaneado','warn'); return;
+  }
+  beepOk();
+  showBigNum(session.packages.length+1, shipId, session.chofer?.name || '');
+  await lookupPackage(shipId, val);
+  document.getElementById('manualId').value='';
+}
+
+async function lookupPackage(shipId, raw) {
+  if(cfg.mlToken) {
+    await fetchML(shipId, raw);
+  } else {
+    await fetchDemo(shipId, raw);
+  }
+}
+
+async function fetchML(shipId, raw) {
+  try {
+    const r=await fetch(`https://api.mercadolibre.com/shipments/${shipId}`,{
+      headers:{Authorization:`Bearer ${cfg.mlToken}`}
+    });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const ship=await r.json();
+    let order=null;
+    if(ship.order_id) {
+      try {
+        const or=await fetch(`https://api.mercadolibre.com/orders/${ship.order_id}`,{
+          headers:{Authorization:`Bearer ${cfg.mlToken}`}
+        });
+        if(or.ok) order=await or.json();
+      } catch(e){}
+    }
+    // Check if order or shipment is cancelled
+    const isCancelled = ship.status==='cancelled' || order?.status==='cancelled';
+    if(isCancelled) {
+      beepErr();
+      showCancelledAlert(buildMLPkg(ship, order, shipId, raw));
+      return;
+    }
+    addPackage(buildMLPkg(ship, order, shipId, raw));
+  } catch(e) {
+    toast('❌ Error API: '+e.message,'err');
+    beepErr();
+  }
+}
+
+function buildMLPkg(ship, order, shipId, raw) {
+  const addr=ship.receiver_address||{};
+  const rec=ship.receivers?.[0]||{};
+  return {
+    shipmentId: shipId,
+    isDemo: false,
+    status: ship.status,
+    recipientName: rec.receiver_name||addr.receiver_name||'—',
+    address: [addr.street_name,addr.street_number,addr.apartment,addr.city?.name,addr.state?.name,addr.zip_code].filter(Boolean).join(', ')||'—',
+    orderId: ship.order_id||'—',
+    mlAccount: order?.seller?.nickname||'—',
+    orderTotal: order?.total_amount?`$${order.total_amount.toLocaleString('es-AR')}`:'—',
+    weight: ship.dimensions?.weight?`${(ship.dimensions.weight/1000).toFixed(2)} kg`:'—',
+    scannedAt: new Date().toISOString(),
+    raw,
+  };
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function hash(s){let h=0;for(let i=0;i<s.length;i++)h=Math.imul(31,h)+s.charCodeAt(i)|0;return Math.abs(h);}
+
+async function fetchDemo(shipId, raw) {
+  await sleep(600);
+  const names=['María González','Carlos Rodríguez','Lucía Martínez','Diego Fernández','Ana López','Pablo Sánchez'];
+  const streets=['Av. Corrientes 1234, CABA','Belgrano 567, Quilmes','San Martín 890, Lomas de Zamora','Rivadavia 2345, Lanús','Mitre 678, Avellaneda','9 de Julio 321, La Plata'];
+  const accounts=['TREKASHOP_OFICIAL','TREKASHOP_STORE','TREKA_VENTAS'];
+  const h=hash(shipId);
+  // Every 4th package is cancelled in demo mode so you can test the alert
+  const isCancelled = (h % 4 === 0);
+  const status = isCancelled ? 'cancelled' : ['ready_to_ship','shipped','handling'][h%3];
+  const pkg = {
+    shipmentId: shipId,
+    isDemo: true,
+    status,
+    recipientName: names[h%names.length],
+    address: streets[h%streets.length],
+    orderId: `ORD-${shipId.slice(-6)}`,
+    mlAccount: accounts[h%accounts.length],
+    orderTotal: `$${(5000+h%40000).toLocaleString('es-AR')}`,
+    weight: `${(0.3+h%20/10).toFixed(2)} kg`,
+    scannedAt: new Date().toISOString(),
+    raw,
+  };
+  if(isCancelled) { beepErr(); showCancelledAlert(pkg); return; }
+  addPackage(pkg);
+}
+
+function addPackage(pkg) {
+  session.packages.push(pkg);
+  updateSessionUI();
+  updatePendingBadge();
+  // refresh status view if open
+  if(document.getElementById("view-status")?.classList.contains("active")) updateStatusView();
+  const remaining = pendingShipments.filter(s => !session.packages.map(p=>p.shipmentId).includes(s.shipmentId));
+  if(pendingLoaded && remaining.length === 0 && pendingShipments.length > 0) {
+    toast('🎉 ¡Todos los paquetes escaneados!','ok');
+  } else {
+    toast(`📦 Paquete #${session.packages.length} — ${remaining.length} pendientes`,'ok');
+  }
+}
+
+function showCancelledAlert(pkg) {
+  // Cache cancelled pkg so re-scan can re-show it
+  if(!session.cancelledIds) session.cancelledIds = [];
+  if(!session.cancelledCache) session.cancelledCache = {};
+  if(!session.cancelledIds.includes(pkg.shipmentId)) {
+    session.cancelledIds.push(pkg.shipmentId);
+  }
+  session.cancelledCache[pkg.shipmentId] = pkg;
+
+  // Build the overlay
+  const existing = document.getElementById('cancelledOverlay');
+  if(existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.id = 'cancelledOverlay';
+  el.innerHTML = `
+    <div id="cancelledBox">
+      <div class="cancelled-icon">🚫</div>
+      <div class="cancelled-title">VENTA CANCELADA</div>
+      <div class="cancelled-sub">NO ENTREGAR ESTE PAQUETE</div>
+      <div class="cancelled-info">
+        <div class="cancelled-row"><span>ID Envío</span><strong>${pkg.shipmentId}</strong></div>
+        <div class="cancelled-row"><span>Destinatario</span><strong>${pkg.recipientName}</strong></div>
+        <div class="cancelled-row"><span>Dirección</span><strong>${pkg.address}</strong></div>
+        <div class="cancelled-row"><span>N° Venta</span><strong>${pkg.orderId}</strong></div>
+        <div class="cancelled-row"><span>Cuenta ML</span><strong>${pkg.mlAccount}</strong></div>
+      </div>
+      <p class="cancelled-msg">Este paquete <strong>no debe ser entregado</strong>. Devolvelo al sector de retención.</p>
+      <button class="cancelled-btn"
+        ontouchstart="dismissCancelledAlert()" onclick="dismissCancelledAlert()">
+        Entendido, continuar
+      </button>
+    </div>`;
+  document.body.appendChild(el);
+  // Force vibrate pattern: 3 long buzzes
+  try { navigator.vibrate && navigator.vibrate([200,100,200,100,200]); } catch(e) {}
+  // Animate in
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ el.classList.add('visible'); }); });
+}
+
+function dismissCancelledAlert() {
+  const el = document.getElementById('cancelledOverlay');
+  if(el) { el.classList.remove('visible'); setTimeout(()=>el.remove(), 300); }
+}
+
+// ─── PKG LIST ────────────────────────────────
+function renderPkgList() {
+  const list=document.getElementById('pkgList');
+  const empty=document.getElementById('pkgEmpty');
+  if(!session||!session.packages.length) { list.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  list.innerHTML=session.packages.map((p,i)=>`
+    <div class="pkg-item">
+      <div class="pkg-num-badge">${i+1}</div>
+      <div class="pkg-info">
+        <div class="pid">${p.shipmentId}${p.isDemo?' · DEMO':''}</div>
+        <div class="pname">${p.recipientName}</div>
+        <div class="paddress">${p.address}</div>
+      </div>
+      <button class="pkg-del" onclick="removePkg(${i})" title="Quitar">✕</button>
+    </div>`).join('');
+}
+
+function removePkg(i) {
+  session.packages.splice(i,1);
+  updateSessionUI();
+  toast('🗑 Paquete quitado');
+}
+
+// ─── FIN / EMAIL ─────────────────────────────
+function askFin() {
+  if(!session||!session.packages.length) { toast('⚠️ Escaneá paquetes primero','err'); return; }
+  if(!session.chofer) { openSessionModal(); return; }
+
+  const scannedIds = session.packages.map(p => p.shipmentId);
+  const pending = pendingShipments.filter(s => !scannedIds.includes(s.shipmentId));
+  const scannedCount = session.packages.length;
+  const pendingCount = pending.length;
+
+  document.getElementById('confirmFinCount').textContent = scannedCount;
+  document.getElementById('confirmPendingCount').textContent = pendingCount;
+
+  // Show/hide pending button
+  const btnVer = document.getElementById('btnVerPendientes');
+  if(pendingCount > 0) {
+    btnVer.style.display = '';
+    btnVer.textContent = `👁 Ver ${pendingCount} pendiente${pendingCount>1?'s':''}`;
+  } else {
+    btnVer.style.display = 'none';
+  }
+  // Hide pending list
+  document.getElementById('pendingListWrap').style.display = 'none';
+
+  document.getElementById('confirmFin').classList.add('open');
+}
+
+function togglePendingList() {
+  const wrap = document.getElementById('pendingListWrap');
+  const showing = wrap.style.display !== 'none';
+  if(showing) { wrap.style.display = 'none'; return; }
+
+  const scannedIds = session.packages.map(p => p.shipmentId);
+  const pending = pendingShipments.filter(s => !scannedIds.includes(s.shipmentId));
+
+  const list = document.getElementById('pendingList');
+  list.innerHTML = pending.map(s => `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${s.recipientName}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.account} · ID ${s.shipmentId}</div>
+          ${s.address !== '—' ? `<div style="font-size:11px;color:var(--muted2);margin-top:2px">${s.address}</div>` : ''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          ${s.orderTime ? `<div style="font-size:14px;font-weight:700;color:var(--y)">${s.orderTime}</div>` : ''}
+          ${s.orderDate ? `<div style="font-size:10px;color:var(--muted)">${s.orderDate}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+  wrap.style.display = 'block';
+}
+function cancelFin() { document.getElementById('confirmFin').classList.remove('open'); }
+function addMorePkgs() { document.getElementById('confirmFin').classList.remove('open'); }
+
+function askEmail() {
+  document.getElementById('confirmFin').classList.remove('open');
+  // Ask for signature first
+  openSigModal(() => {
+    document.getElementById('sendEmailInp').value=cfg.email||'';
+    updateSigPreviewInConfirm();
+    document.getElementById('confirmSend').classList.add('open');
+  });
+}
+
+function openSigFromConfirm() {
+  document.getElementById('confirmSend').classList.remove('open');
+  openSigModal(() => {
+    updateSigPreviewInConfirm();
+    document.getElementById('confirmSend').classList.add('open');
+  });
+}
+
+function updateSigPreviewInConfirm() {
+  const wrap = document.getElementById('sigPreviewWrap');
+  const img = document.getElementById('sigPreviewImg');
+  const warn = document.getElementById('sigMissingWarn');
+  if(session && session.signature) {
+    img.src = session.signature;
+    wrap.classList.add('has-sig');
+    warn.style.display='none';
+  } else {
+    wrap.classList.remove('has-sig');
+    warn.style.display='block';
+  }
+}
+function closeConfirmSend() { document.getElementById('confirmSend').classList.remove('open'); }
+
+async function doSendEmail() {
+  const to=document.getElementById('sendEmailInp').value.trim();
+  if(!to) { toast('⚠️ Ingresá un email','err'); return; }
+  closeConfirmSend();
+
+  if(cfg.sgKey&&cfg.sgFrom) {
+    await sendViaSendGrid(to);
+  } else {
+    sendViaMailto(to);
+  }
+}
+
+async function sendViaSendGrid(to) {
+  toast('⏳ Enviando email...','');
+  const html=buildEmailHTML();
+  const subject=buildEmailSubject();
+  try {
+    const r=await fetch('https://api.sendgrid.com/v3/mail/send',{
+      method:'POST',
+      headers:{'Authorization':`Bearer ${cfg.sgKey}`,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        personalizations:[{to:[{email:to}]}],
+        from:{email:cfg.sgFrom,name:'TrekaShop Flex'},
+        subject,
+        content:[{type:'text/html',value:html}]
+      })
+    });
+    if(r.ok||r.status===202) {
+      toast('✅ Email enviado!','ok');
+      endSession();
+    } else {
+      const e=await r.json().catch(()=>({}));
+      throw new Error(e.errors?.[0]?.message||`HTTP ${r.status}`);
+    }
+  } catch(e) {
+    toast('❌ Error al enviar: '+e.message,'err');
+  }
+}
+
+function sendViaMailto(to) {
+  const subject=encodeURIComponent(buildEmailSubject());
+  const body=encodeURIComponent(buildEmailText());
+  window.open(`mailto:${to}?subject=${subject}&body=${body}`,'_blank');
+  toast('📧 Abriendo cliente de email...','ok');
+  endSession();
+}
+
+function endSession() {
+  session=null;
+  updateSessionUI();
+  document.getElementById('bigNumDisplay').style.display='none';
+}
+
+function buildEmailSubject() {
+  const d=new Date(session.startTime);
+  const df=d.toLocaleDateString('es-AR');
+  return `Retiro TrekaShop · ${session.chofer.name} · ${df} · ${session.packages.length} paquetes`;
+}
+
+function buildEmailText() {
+  const ch=session.chofer;
+  const dt=new Date(session.startTime);
+  const dtStr=dt.toLocaleString('es-AR');
+  let t=`RETIRO TREKASHOP\n`;
+  t+=`Chofer: ${ch.name} (DNI ${ch.dni})\n`;
+  t+=`Fecha y hora: ${dtStr}\n`;
+  t+=`Total paquetes: ${session.packages.length}\n`;
+  t+=`${'='.repeat(50)}\n\n`;
+  session.packages.forEach((p,i)=>{
+    t+=`#${i+1} | Envío: ${p.shipmentId}\n`;
+    t+=`   Cuenta ML: ${p.mlAccount}\n`;
+    t+=`   N° Venta: ${p.orderId}\n`;
+    t+=`   Destinatario: ${p.recipientName}\n`;
+    t+=`   Dirección: ${p.address}\n`;
+    t+=`   Peso: ${p.weight} | Total: ${p.orderTotal}\n\n`;
+  });
+  return t;
+}
+
+function buildEmailHTML() {
+  const ch=session.chofer;
+  const dt=new Date(session.startTime);
+  const dtStr=dt.toLocaleString('es-AR');
+  const photoTag=ch.photo?`<img src="${ch.photo}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid #FFE600;margin-right:14px" alt=""/>`:`<div style="width:60px;height:60px;border-radius:50%;background:#2a2a2a;display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-right:14px">👤</div>`;
+
+  const rows=session.packages.map((p,i)=>`
+    <tr style="border-bottom:1px solid #2a2a2a;">
+      <td style="padding:12px 8px;font-family:monospace;color:#FFE600;font-size:13px;font-weight:700">#${i+1}</td>
+      <td style="padding:12px 8px;font-family:monospace;font-size:12px;color:#aaa">${p.shipmentId}</td>
+      <td style="padding:12px 8px;font-size:12px;color:#aaa">${p.mlAccount}</td>
+      <td style="padding:12px 8px;font-family:monospace;font-size:12px">${p.orderId}</td>
+      <td style="padding:12px 8px;font-size:13px;font-weight:600">${p.recipientName}</td>
+      <td style="padding:12px 8px;font-size:12px;color:#ccc;max-width:200px">${p.address}</td>
+      <td style="padding:12px 8px;font-size:12px;color:#aaa">${p.weight}</td>
+      <td style="padding:12px 8px;font-size:13px;font-weight:600;color:#FFE600">${p.orderTotal}</td>
+    </tr>`).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Segoe UI',sans-serif;color:#f2f2f2;">
+<div style="max-width:800px;margin:0 auto;">
+
+  <!-- HEADER -->
+  <div style="background:#FFE600;padding:24px 28px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:28px;font-weight:900;color:#0a0a0a;letter-spacing:2px;font-family:monospace">TREKASHOP</div>
+      <div style="font-size:13px;color:#333;margin-top:2px;letter-spacing:1px">RETIRO FLEX · LISTADO OFICIAL</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:12px;color:#333;font-family:monospace">${dtStr}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">${session.packages.length} paquetes</div>
+    </div>
+  </div>
+
+  <!-- CHOFER -->
+  <div style="background:#111;padding:20px 28px;border-bottom:1px solid #252525;display:flex;align-items:center">
+    ${photoTag}
+    <div>
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:2px;font-family:monospace">Chofer que retira</div>
+      <div style="font-size:20px;font-weight:700;margin-top:4px">${ch.name}</div>
+      <div style="font-size:13px;color:#999;font-family:monospace;margin-top:2px">DNI ${ch.dni}</div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div style="background:#111;padding:20px 28px;">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:2px solid #FFE600">
+          <th style="padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#666;font-family:monospace">#</th>
+          <th style="padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#666;font-family:monospace">ID Envío</th>
+          <th style="padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#666;font-family:monospace">Cuenta ML</th>
+          <th style="padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#666;font-family:monospace">N° Venta</th>
+          <th style="padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#666;font-family:monospace">Destinatario</th>
+          <th style="padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#666;font-family:monospace">Dirección</th>
+          <th style="padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#666;font-family:monospace">Peso</th>
+          <th style="padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#666;font-family:monospace">Total</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+
+  <!-- FIRMA -->
+  <div style="background:#111;padding:20px 28px;border-top:1px solid #252525;">
+    <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:2px;font-family:monospace;margin-bottom:12px">Firma del chofer</div>
+    <div style="background:#fff;border-radius:8px;padding:12px;display:inline-block;">
+      ${session.signature ? `<img src="${session.signature}" style="height:70px;display:block" alt="Firma"/>` : '<div style="font-size:12px;color:#999;padding:20px 40px">Sin firma</div>'}
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:#666;font-family:monospace">${ch.name} · DNI ${ch.dni}</div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="background:#0a0a0a;padding:16px 28px;border-top:1px solid #252525;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:11px;color:#444;font-family:monospace">Generado por TrekaShop Flex Scanner</div>
+    <div style="font-size:11px;color:#FFE600;font-family:monospace">${session.packages.length} PKG · ${dtStr}</div>
+  </div>
+
+</div><!-- Master photo input at body level — outside all views/transforms/overflow -->
+<input type="file" accept="image/*" id="photoFileMaster"
+  style="position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0"
+  onchange="handlePhoto(event)"/>
+</body></html>`;
+}
+
+// ─── FIRMA DIGITAL ───────────────────────────
+let sigCallback = null;
+let sigDrawing = false;
+let sigHasStrokes = false;
+let sigCanvas, sigCtx;
+
+function initSigCanvas() {
+  sigCanvas = document.getElementById('sigCanvas');
+  if(!sigCanvas) return;
+  const wrap = sigCanvas.parentElement;
+  sigCanvas.width = wrap.offsetWidth * window.devicePixelRatio;
+  sigCanvas.height = 180 * window.devicePixelRatio;
+  sigCanvas.style.width = '100%';
+  sigCanvas.style.height = '180px';
+  sigCtx = sigCanvas.getContext('2d');
+  sigCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  sigCtx.strokeStyle = '#111';
+  sigCtx.lineWidth = 2.5;
+  sigCtx.lineCap = 'round';
+  sigCtx.lineJoin = 'round';
+
+  function getPos(e) {
+    const rect = sigCanvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - rect.left), y: (src.clientY - rect.top) };
+  }
+
+  sigCanvas.addEventListener('mousedown', e => { sigDrawing=true; sigCtx.beginPath(); const p=getPos(e); sigCtx.moveTo(p.x,p.y); e.preventDefault(); });
+  sigCanvas.addEventListener('mousemove', e => { if(!sigDrawing) return; const p=getPos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); sigHasStrokes=true; updateSigState(); e.preventDefault(); });
+  sigCanvas.addEventListener('mouseup', () => { sigDrawing=false; });
+  sigCanvas.addEventListener('touchstart', e => { sigDrawing=true; sigCtx.beginPath(); const p=getPos(e); sigCtx.moveTo(p.x,p.y); e.preventDefault(); }, {passive:false});
+  sigCanvas.addEventListener('touchmove', e => { if(!sigDrawing) return; const p=getPos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); sigHasStrokes=true; updateSigState(); e.preventDefault(); }, {passive:false});
+  sigCanvas.addEventListener('touchend', () => { sigDrawing=false; }, {passive:true});
+}
+
+function updateSigState() {
+  const btn = document.getElementById('sigConfirmBtn');
+  const status = document.getElementById('sigStatus');
+  if(sigHasStrokes) {
+    if(btn) { btn.style.opacity='1'; btn.style.pointerEvents='auto'; }
+    if(status) { status.textContent='✅ Firma lista — tocá Confirmar'; status.style.color='var(--ok)'; }
+  } else {
+    if(btn) { btn.style.opacity='.4'; btn.style.pointerEvents='none'; }
+    if(status) { status.textContent='Dibujá tu firma arriba'; status.style.color='var(--muted)'; }
+  }
+}
+
+function clearSignature() {
+  if(!sigCtx||!sigCanvas) return;
+  sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height);
+  sigHasStrokes=false;
+  updateSigState();
+}
+
+function openSigModal(callback) {
+  sigCallback = callback || null;
+  sigHasStrokes = false;
+  document.getElementById('sigChoferName').textContent = session?.chofer?.name || '';
+  document.getElementById('sigModal').classList.add('open');
+  setTimeout(()=>{ initSigCanvas(); updateSigState(); }, 100);
+}
+
+function closeSigModal() {
+  document.getElementById('sigModal').classList.remove('open');
+  sigCallback = null;
+}
+
+function confirmSignature() {
+  if(!sigHasStrokes) { toast('⚠️ Dibujá la firma primero','err'); return; }
+  // Export with white background
+  const offscreen = document.createElement('canvas');
+  offscreen.width = sigCanvas.width;
+  offscreen.height = sigCanvas.height;
+  const ctx2 = offscreen.getContext('2d');
+  ctx2.fillStyle='#fff';
+  ctx2.fillRect(0,0,offscreen.width,offscreen.height);
+  ctx2.drawImage(sigCanvas,0,0);
+  session.signature = offscreen.toDataURL('image/png');
+  document.getElementById('sigModal').classList.remove('open');
+  toast('✍️ Firma guardada','ok');
+  if(sigCallback) { const cb=sigCallback; sigCallback=null; cb(); }
+}
+
+
+// ─── TOAST ───────────────────────────────────
+let _toastTimer;
+function toast(msg, type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className=`toast ${type} show`;
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ─── INIT ────────────────────────────────────
+loadConfig();
+renderChoferList();
+updateSessionUI();
+
+// Tab navigation handled by tabTap()
+
+document.getElementById('manualId').addEventListener('keydown',e=>{ if(e.key==='Enter') manualSearch(); });
+
+// Preload scanner library
+setTimeout(loadZXing, 1000);
+// Load pending ML shipments on startup
+setTimeout(async () => { updateHomeUI("loading"); await loadPendingShipments(); }, 500);
+</script>
+
+<!-- Master photo input at body level — outside all views/transforms/overflow -->
+<input type="file" accept="image/*" id="photoFileMaster"
+  style="position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0"
+  onchange="handlePhoto(event)"/>
+</body>
+</html>
