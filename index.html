@@ -1074,15 +1074,20 @@ function beep(freq=880, dur=0.12, type='sine', vol=0.4) {
     o.start(); o.stop(ctx.currentTime + dur);
   } catch(e){}
 }
-function beepOk() { beep(1200,.08,'sine',.25); } // soft single pip
-function beepDup() { // double beep — medium
-  beep(600,.15,'square',.35);
-  setTimeout(()=>beep(600,.15,'square',.35), 200);
+function beepOk() {
+  // Soft single high pip
+  beep(1400, .06, 'sine', .2);
 }
-function beepErr() { // triple beep — alert
-  beep(300,.2,'sawtooth',.45);
-  setTimeout(()=>beep(300,.2,'sawtooth',.45), 220);
-  setTimeout(()=>beep(300,.2,'sawtooth',.45), 440);
+function beepDup() {
+  // Two medium tones — "already got it"
+  beep(500, .12, 'sine', .3);
+  setTimeout(()=>beep(400, .12, 'sine', .3), 180);
+}
+function beepErr() {
+  // Three low harsh tones — alert/danger
+  beep(220, .18, 'sawtooth', .5);
+  setTimeout(()=>beep(220, .18, 'sawtooth', .5), 220);
+  setTimeout(()=>beep(220, .18, 'sawtooth', .5), 440);
 }
 
 // ─── VIEWS ───────────────────────────────────
@@ -1174,7 +1179,6 @@ let scanHistory = []; // last 5 scans
 function addScanHistory(id, status) {
   scanHistory.unshift({ id: String(id), status, time: new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) });
   if(scanHistory.length > 8) scanHistory.pop();
-  renderScanHistory();
   renderScanHistory();
 }
 
@@ -1634,9 +1638,7 @@ function startZXing(video) {
         });
         if(code && code.data) {
           handleScan(code.data);
-          // After a scan, pause 2.5s (same as handleScan debounce) then reset
-          // so scanner is immediately ready for next code
-          lastQRScan = now + 2500;
+          lastQRScan = now + 800; // short pause just to avoid CPU hammering
         }
       }
     }
@@ -1680,9 +1682,15 @@ async function handleScan(raw) {
   const isZuiden = isZuidenPackage(raw);
   const now = Date.now();
 
-  // Debounce: same ID within 2.5s = skip (prevents double-fire from scanner)
-  // BUT: allow re-scan of same ID after 2.5s for duplicates/cancelled/notfound
-  if(shipId === lastScanId && (now - lastScanTime < 2500)) return;
+  // Debounce — only for fresh OK scans to prevent double-fire
+  // Duplicates/cancelled/notfound always get through immediately
+  const _alreadyInSession = !!session.packages.find(p => p.shipmentId === shipId);
+  const _alreadyCancelled = !!(session.cancelledIds && session.cancelledIds.includes(shipId));
+  const _notInML = !isZuiden && pendingShipments.length > 0 && !pendingShipments.find(s => s.shipmentId === shipId);
+  const _needsImmediate = _alreadyInSession || _alreadyCancelled || _notInML;
+  if(!_needsImmediate) {
+    if(shipId === lastScanId && (now - lastScanTime < 2000)) return;
+  }
   lastScanId = shipId;
   lastScanTime = now;
 
@@ -1981,7 +1989,7 @@ function showDupAlert(shipId) {
   if(existing) existing.remove();
   const el = document.createElement('div');
   el.id = 'dupOverlay';
-  el.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(255,230,0,0.97);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .2s;padding:24px;text-align:center';
+  el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(255,230,0,0.97);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .2s;padding:24px;text-align:center';
   el.innerHTML = `
     <div style="font-size:64px;margin-bottom:16px">🟡</div>
     <div style="font-size:32px;font-weight:900;color:#000;letter-spacing:2px;margin-bottom:8px">DUPLICADO</div>
