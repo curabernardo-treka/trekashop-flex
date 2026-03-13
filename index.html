@@ -1075,19 +1075,17 @@ function beep(freq=880, dur=0.12, type='sine', vol=0.4) {
   } catch(e){}
 }
 function beepOk() {
-  // Soft single high pip
-  beep(1400, .06, 'sine', .2);
+  beep(1400, .12, 'sine', .6);
+  setTimeout(()=>beep(1800, .08, 'sine', .4), 100);
 }
 function beepDup() {
-  // Two medium tones — "already got it"
-  beep(500, .12, 'sine', .3);
-  setTimeout(()=>beep(400, .12, 'sine', .3), 180);
+  beep(440, .2, 'square', .7);
+  setTimeout(()=>beep(330, .2, 'square', .7), 250);
 }
 function beepErr() {
-  // Three low harsh tones — alert/danger
-  beep(220, .18, 'sawtooth', .5);
-  setTimeout(()=>beep(220, .18, 'sawtooth', .5), 220);
-  setTimeout(()=>beep(220, .18, 'sawtooth', .5), 440);
+  beep(180, .25, 'sawtooth', .9);
+  setTimeout(()=>beep(180, .25, 'sawtooth', .9), 280);
+  setTimeout(()=>beep(180, .25, 'sawtooth', .9), 560);
 }
 
 // ─── VIEWS ───────────────────────────────────
@@ -1624,6 +1622,7 @@ function startZXing(video) {
   let lastQRScan = 0;
   function tick() {
     if(!window._scanningActive || !cameraOn) return;
+    if(scannerPaused) { requestAnimationFrame(tick); return; } // paused while alert showing
     if(video.readyState === video.HAVE_ENOUGH_DATA) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -1670,6 +1669,7 @@ async function flipCamera() {
 // ─── SCAN HANDLER ────────────────────────────
 let lastScanId = '';
 let lastScanTime = 0;
+let scannerPaused = false; // true while alert is visible
 
 async function handleScan(raw) {
   // Auto-create session if none
@@ -1706,11 +1706,11 @@ async function handleScan(raw) {
       showDupAlert(displayId);
       return;
     }
-    beepOk(); vibrate([100]);
-    showBigNum(session.packages.length+1, displayId, '', 'external');
+    beepOk();
+    try { navigator.vibrate && navigator.vibrate([100]); } catch(e) {}
     addScanHistory(displayId, 'ZUIDEN');
     addPackage({ shipmentId: shipId, account: 'ZUIDEN', orderId: zuidenInfo.did || '—', recipientName: '—', address: '—', orderTime: null, orderDate: null, isExternal: true, raw, scannedAt: new Date().toISOString() });
-    toast('📦 Zuiden registrado', 'ok');
+    showExternalAlert(displayId, 'ZUIDEN');
     return;
   }
 
@@ -1743,10 +1743,10 @@ async function handleScan(raw) {
 
   // ── Not in ML pending list → NO PERTENECE ──
   if(pendingShipments.length > 0 && !pendingShipments.find(s => s.shipmentId === shipId)) {
-    beepErr(); vibrate([300,100,300]);
-    showBigNum('?', shipId, '', 'notfound');
+    beepErr();
+    try { navigator.vibrate && navigator.vibrate([300,100,300]); } catch(e) {}
     addScanHistory(shipId, 'NO PERTENECE');
-    toast('⚠️ No está en tus envíos ML', 'err');
+    showNotFoundAlert(shipId);
     return;
   }
 
@@ -1784,22 +1784,26 @@ function isExternalPackage(text, shipId) {
 }
 
 function showBigNum(num, id, who, type) {
-  // type: 'ok' | 'dup' | 'cancelled' | 'external'
-  const d = document.getElementById('bigNumDisplay');
-  const colors = { ok:'#00C853', dup:'#FFE600', cancelled:'#FF6D00', external:'#2979FF', notfound:'#FF1744' };
-  const labels = { ok:'✅ OK', dup:'🟡 DUPLICADO', cancelled:'🟠 CANCELADO', external:'📦 EXTERNO', notfound:'🔴 NO PERTENECE' };
-  const bgColors = { ok:'rgba(0,200,83,.15)', dup:'rgba(255,230,0,.1)', cancelled:'rgba(255,109,0,.15)', external:'rgba(41,121,255,.15)', notfound:'rgba(255,23,68,.15)' };
+  // Fullscreen flash overlay — auto dismiss after 1.5s
+  const existing = document.getElementById('flashOverlay');
+  if(existing) existing.remove();
+  const colors = { ok:'#00C853', external:'#2979FF', notfound:'#FF1744' };
+  const bgColors = { ok:'#003d1a', external:'#001a4d', notfound:'#3d0000' };
+  const labels = { ok:'OK', external:'EXTERNO', notfound:'NO PERTENECE' };
+  const icons = { ok:'✅', external:'📦', notfound:'🔴' };
   const t = type || 'ok';
-  d.style.background = bgColors[t] || bgColors.ok;
-  d.style.borderColor = colors[t] || colors.ok;
-  document.getElementById('bigNumValue').textContent = num;
-  document.getElementById('bigNumLabel').textContent = labels[t] || labels.ok;
-  document.getElementById('bigNumLabel').style.color = colors[t] || colors.ok;
-  document.getElementById('bigNumId').textContent = 'ID: ' + id;
-  document.getElementById('bigNumWho').textContent = who ? 'Chofer: ' + who : '';
-  d.style.display = 'flex';
-  clearTimeout(window._bigNumTimer);
-  window._bigNumTimer = setTimeout(() => { d.style.display = 'none'; }, 1500);
+  const el = document.createElement('div');
+  el.id = 'flashOverlay';
+  el.style.cssText = `position:fixed;inset:0;z-index:99999;background:${bgColors[t]||bgColors.ok};display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .15s;padding:24px;text-align:center`;
+  el.innerHTML = `
+    <div style="font-size:56px;margin-bottom:8px">${icons[t]||icons.ok}</div>
+    <div style="font-size:48px;font-weight:900;color:${colors[t]||colors.ok};letter-spacing:3px;margin-bottom:8px">${labels[t]||labels.ok}</div>
+    <div style="font-size:20px;font-weight:700;color:#fff;font-family:monospace;margin-bottom:4px">#${num}</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.6);font-family:monospace">${id}</div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ el.style.opacity='1'; }); });
+  clearTimeout(window._flashTimer);
+  window._flashTimer = setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>el.remove(),150); }, 1500);
 }
 
 // ─── PACKAGE LOOKUP ──────────────────────────
@@ -1972,15 +1976,16 @@ function showCancelledAlert(pkg) {
       </button>
     </div>`;
   document.body.appendChild(el);
-  // Force vibrate pattern: 3 long buzzes
+  scannerPaused = true; // pause scanner while alert is showing
   try { navigator.vibrate && navigator.vibrate([200,100,200,100,200]); } catch(e) {}
-  // Animate in
   requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ el.classList.add('visible'); }); });
 }
 
 function dismissCancelledAlert() {
   const el = document.getElementById('cancelledOverlay');
   if(el) { el.classList.remove('visible'); setTimeout(()=>el.remove(), 300); }
+  scannerPaused = false; // resume scanner
+  lastScanId = ''; lastScanTime = 0; // reset debounce
 }
 
 function showDupAlert(shipId) {
@@ -2028,15 +2033,77 @@ function showDupAlert(shipId) {
       Continuar
     </button>`;
   document.body.appendChild(el);
+  scannerPaused = true; // pause scanner while alert is showing
   try { navigator.vibrate && navigator.vibrate([100,50,100]); } catch(e) {}
   requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ el.style.opacity='1'; }); });
-  clearTimeout(window._dupTimer);
-  window._dupTimer = setTimeout(()=>dismissDupAlert(), 4000);
+  // NO auto-dismiss — operator must tap Continuar
 }
 
 function dismissDupAlert() {
   const el = document.getElementById('dupOverlay');
   if(el) { el.style.opacity='0'; setTimeout(()=>el.remove(), 200); }
+  scannerPaused = false;
+  lastScanId = ''; lastScanTime = 0;
+}
+
+function showNotFoundAlert(shipId) {
+  const existing = document.getElementById('notFoundOverlay');
+  if(existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'notFoundOverlay';
+  el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#3d0000;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .15s;padding:24px;text-align:center';
+  el.innerHTML = `
+    <div style="font-size:56px;margin-bottom:12px">🚫</div>
+    <div style="font-size:36px;font-weight:900;color:#FF4444;letter-spacing:3px;margin-bottom:8px">NO PERTENECE</div>
+    <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:20px">Este paquete no está en tu lista ML</div>
+    <div style="background:rgba(255,68,68,.15);border-radius:14px;padding:16px 20px;margin-bottom:24px;width:100%;max-width:320px">
+      <div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:4px">ID Envío</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;font-family:monospace">${shipId}</div>
+    </div>
+    <button ontouchstart="dismissNotFoundAlert()" onclick="dismissNotFoundAlert()"
+      style="background:#FF4444;color:#fff;border:none;border-radius:14px;padding:16px 48px;font-size:16px;font-weight:800;cursor:pointer;touch-action:manipulation;min-width:200px">
+      Continuar
+    </button>`;
+  document.body.appendChild(el);
+  scannerPaused = true;
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ el.style.opacity='1'; }); });
+}
+
+function dismissNotFoundAlert() {
+  const el = document.getElementById('notFoundOverlay');
+  if(el) { el.style.opacity='0'; setTimeout(()=>el.remove(), 200); }
+  scannerPaused = false;
+  lastScanId = ''; lastScanTime = 0;
+}
+
+function showExternalAlert(displayId, label) {
+  const existing = document.getElementById('externalOverlay');
+  if(existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'externalOverlay';
+  el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#001a4d;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .15s;padding:24px;text-align:center';
+  el.innerHTML = `
+    <div style="font-size:56px;margin-bottom:12px">📦</div>
+    <div style="font-size:36px;font-weight:900;color:#2979FF;letter-spacing:3px;margin-bottom:8px">${label}</div>
+    <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:20px">Paquete externo registrado</div>
+    <div style="background:rgba(41,121,255,.2);border-radius:14px;padding:16px 20px;margin-bottom:24px;width:100%;max-width:320px">
+      <div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:4px">ID</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;font-family:monospace">${displayId}</div>
+    </div>
+    <button ontouchstart="dismissExternalAlert()" onclick="dismissExternalAlert()"
+      style="background:#2979FF;color:#fff;border:none;border-radius:14px;padding:16px 48px;font-size:16px;font-weight:800;cursor:pointer;touch-action:manipulation;min-width:200px">
+      Continuar
+    </button>`;
+  document.body.appendChild(el);
+  scannerPaused = true;
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ el.style.opacity='1'; }); });
+}
+
+function dismissExternalAlert() {
+  const el = document.getElementById('externalOverlay');
+  if(el) { el.style.opacity='0'; setTimeout(()=>el.remove(), 200); }
+  scannerPaused = false;
+  lastScanId = ''; lastScanTime = 0;
 }
 
 // ─── PKG LIST ────────────────────────────────
