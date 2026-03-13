@@ -1685,9 +1685,9 @@ async function handleScan(raw) {
     const displayId = 'Zuiden #' + (zuidenInfo.did || shipId);
     // Check duplicate
     if(session.packages.find(p => p.shipmentId === shipId)) {
-      beepDup(); vibrate([100,50,100]);
-      showBigNum('', displayId, '', 'dup');
+      beepDup();
       addScanHistory(displayId, 'DUPLICADO');
+      showDupAlert(displayId);
       return;
     }
     beepOk(); vibrate([100]);
@@ -1710,9 +1710,9 @@ async function handleScan(raw) {
 
   // ── Duplicate (already scanned OK) ──
   if(session.packages.find(p => p.shipmentId === shipId)) {
-    beepDup(); vibrate([100,50,100]);
-    showBigNum(session.packages.length, shipId, '', 'dup');
+    beepDup();
     addScanHistory(shipId, 'DUPLICADO');
+    showDupAlert(shipId);
     return;
   }
 
@@ -1965,6 +1965,34 @@ function showCancelledAlert(pkg) {
 function dismissCancelledAlert() {
   const el = document.getElementById('cancelledOverlay');
   if(el) { el.classList.remove('visible'); setTimeout(()=>el.remove(), 300); }
+}
+
+function showDupAlert(shipId) {
+  const existing = document.getElementById('dupOverlay');
+  if(existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'dupOverlay';
+  el.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(255,230,0,0.97);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .2s;padding:24px;text-align:center';
+  el.innerHTML = `
+    <div style="font-size:64px;margin-bottom:16px">🟡</div>
+    <div style="font-size:32px;font-weight:900;color:#000;letter-spacing:2px;margin-bottom:8px">DUPLICADO</div>
+    <div style="font-size:16px;font-weight:700;color:#333;margin-bottom:20px">Este paquete ya fue escaneado</div>
+    <div style="background:rgba(0,0,0,.1);border-radius:12px;padding:14px 20px;margin-bottom:24px;font-family:monospace;font-size:14px;color:#000;font-weight:700">ID: ${shipId}</div>
+    <button ontouchstart="dismissDupAlert()" onclick="dismissDupAlert()"
+      style="background:#000;color:#FFE600;border:none;border-radius:14px;padding:16px 40px;font-size:16px;font-weight:800;cursor:pointer;touch-action:manipulation">
+      Continuar
+    </button>`;
+  document.body.appendChild(el);
+  try { navigator.vibrate && navigator.vibrate([100,50,100]); } catch(e) {}
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ el.style.opacity='1'; }); });
+  // Auto-dismiss after 3s
+  clearTimeout(window._dupTimer);
+  window._dupTimer = setTimeout(()=>dismissDupAlert(), 3000);
+}
+
+function dismissDupAlert() {
+  const el = document.getElementById('dupOverlay');
+  if(el) { el.style.opacity='0'; setTimeout(()=>el.remove(), 200); }
 }
 
 // ─── PKG LIST ────────────────────────────────
