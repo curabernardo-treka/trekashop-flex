@@ -1150,7 +1150,7 @@ function addScanHistory(id, status) {
 function renderScanHistory() {
   const el = document.getElementById('scanHistoryList');
   if(!el) return;
-  const colors = { 'OK':'var(--ok)', 'DUPLICADO':'#FFE600', 'CANCELADO':'#FF6D00', 'ZUIDEN':'#2979FF', 'EXTERNO':'#2979FF' };
+  const colors = { 'OK':'var(--ok)', 'DUPLICADO':'#FFE600', 'CANCELADO':'#FF6D00', 'ZUIDEN':'#2979FF', 'EXTERNO':'#2979FF', 'NO PERTENECE':'#FF1744' };
   el.innerHTML = scanHistory.length ? scanHistory.map(h => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border)">
       <div style="font-family:monospace;font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.id}</div>
@@ -1603,102 +1603,70 @@ async function flipCamera() {
 
 // ─── SCAN HANDLER ────────────────────────────
 let lastScanTime=0;
+// ─── SCAN HANDLER ────────────────────────────
+let lastScanTime=0;
 async function handleScan(raw) {
-  const now=Date.now();
-  if(now-lastScanTime<2000) return; // debounce
-  lastScanTime=now;
+  const now = Date.now();
+  if(now - lastScanTime < 2000) return;
+  lastScanTime = now;
 
-  // Auto-create anonymous session if none exists
+  // Auto-create session if none
   if(!session) {
     session = { chofer: null, startTime: new Date().toISOString(), packages: [], signature: null, cancelledIds: [], cancelledCache: {} };
     saveSession();
   }
 
   const shipId = extractId(raw);
-
-  // If previously flagged as cancelled — re-show the alert immediately
-  if(session.cancelledIds && session.cancelledIds.includes(shipId)) {
-    beepErr();
-    toast('🚫 ¡PAQUETE CANCELADO! No entregar','err');
-    // Re-trigger the cancelled alert with cached data
-    const cached = session.cancelledCache && session.cancelledCache[shipId];
-    if(cached) { addScanHistory(shipId||'?', 'CANCELADO'); showCancelledAlert(cached); return; }
-    // fallback: lookup again
-    // Check if Zuiden JSON or not in ML list → external
   const isZuiden = isZuidenPackage(raw);
-  const isExternal = isZuiden || (pendingShipments.length > 0 && !pendingShipments.find(s=>s.shipmentId===shipId));
-  if(isExternal) {
-    beepOk();
-    vibrate([100]);
-    // Parse Zuiden data if available
+
+  // ── ZUIDEN external package ──
+  if(isZuiden) {
     let zuidenInfo = {};
     try { zuidenInfo = JSON.parse(raw.trim()); } catch(e) {}
-    const label = isZuiden ? 'ZUIDEN' : 'EXTERNO';
-    const displayId = isZuiden ? ('Zuiden #' + (zuidenInfo.did || shipId)) : shipId;
+    const displayId = 'Zuiden #' + (zuidenInfo.did || shipId);
+    // Check duplicate
+    if(session.packages.find(p => p.shipmentId === shipId)) {
+      beepDup(); vibrate([100,50,100]);
+      showBigNum('', displayId, '', 'dup');
+      addScanHistory(displayId, 'DUPLICADO');
+      return;
+    }
+    beepOk(); vibrate([100]);
     showBigNum(session.packages.length+1, displayId, '', 'external');
-    addScanHistory(displayId, label);
-    addPackage({
-      shipmentId: shipId,
-      account: label,
-      orderId: zuidenInfo.did || '—',
-      recipientName: '—',
-      address: '—',
-      orderTime: null,
-      orderDate: null,
-      isExternal: true,
-      zuidenDid: zuidenInfo.did || null,
-      zuidenLocal: zuidenInfo.local || null,
-      raw: raw,
-      scannedAt: new Date().toISOString(),
-    });
-    toast(`📦 ${label} registrado`, 'ok');
-    return;
-  }
-  await lookupPackage(shipId, raw);
+    addScanHistory(displayId, 'ZUIDEN');
+    addPackage({ shipmentId: shipId, account: 'ZUIDEN', orderId: zuidenInfo.did || '—', recipientName: '—', address: '—', orderTime: null, orderDate: null, isExternal: true, raw, scannedAt: new Date().toISOString() });
+    toast('📦 Zuiden registrado', 'ok');
     return;
   }
 
-  // Check duplicate
-  if(session.packages.find(p=>p.shipmentId===shipId)) {
-    beepDup();
-    vibrate([100,50,100]);
+  // ── Previously cancelled — always re-show alert ──
+  if(session.cancelledIds && session.cancelledIds.includes(shipId)) {
+    beepErr(); vibrate([200,100,200,100,200]);
+    const cached = session.cancelledCache && session.cancelledCache[shipId];
+    addScanHistory(shipId, 'CANCELADO');
+    if(cached) { showCancelledAlert(cached); return; }
+    await lookupPackage(shipId, raw);
+    return;
+  }
+
+  // ── Duplicate (already scanned OK) ──
+  if(session.packages.find(p => p.shipmentId === shipId)) {
+    beepDup(); vibrate([100,50,100]);
     showBigNum(session.packages.length, shipId, '', 'dup');
     addScanHistory(shipId, 'DUPLICADO');
     return;
   }
 
-  beepOk();
-  showBigNum(session.packages.length+1, shipId, session.chofer?.name || '');
-  // Check if Zuiden JSON or not in ML list → external
-  const isZuiden = isZuidenPackage(raw);
-  const isExternal = isZuiden || (pendingShipments.length > 0 && !pendingShipments.find(s=>s.shipmentId===shipId));
-  if(isExternal) {
-    beepOk();
-    vibrate([100]);
-    // Parse Zuiden data if available
-    let zuidenInfo = {};
-    try { zuidenInfo = JSON.parse(raw.trim()); } catch(e) {}
-    const label = isZuiden ? 'ZUIDEN' : 'EXTERNO';
-    const displayId = isZuiden ? ('Zuiden #' + (zuidenInfo.did || shipId)) : shipId;
-    showBigNum(session.packages.length+1, displayId, '', 'external');
-    addScanHistory(displayId, label);
-    addPackage({
-      shipmentId: shipId,
-      account: label,
-      orderId: zuidenInfo.did || '—',
-      recipientName: '—',
-      address: '—',
-      orderTime: null,
-      orderDate: null,
-      isExternal: true,
-      zuidenDid: zuidenInfo.did || null,
-      zuidenLocal: zuidenInfo.local || null,
-      raw: raw,
-      scannedAt: new Date().toISOString(),
-    });
-    toast(`📦 ${label} registrado`, 'ok');
-    return;
+  // ── Not in ML pending list → NO PERTENECE ──
+  if(pendingShipments.length > 0 && !pendingShipments.find(s => s.shipmentId === shipId)) {
+    beepErr(); vibrate([300,100,300]);
+    showBigNum('?', shipId, '', 'notfound');
+    addScanHistory(shipId, 'NO PERTENECE');
+    toast('⚠️ No está en tus envíos ML', 'err');
+    return; // NOT added to packages — can rescan always
   }
+
+  // ── Normal ML package ──
   await lookupPackage(shipId, raw);
 }
 
@@ -1734,9 +1702,9 @@ function isExternalPackage(text, shipId) {
 function showBigNum(num, id, who, type) {
   // type: 'ok' | 'dup' | 'cancelled' | 'external'
   const d = document.getElementById('bigNumDisplay');
-  const colors = { ok:'#00C853', dup:'#FFE600', cancelled:'#FF6D00', external:'#2979FF' };
-  const labels = { ok:'✅ OK', dup:'🟡 DUPLICADO', cancelled:'🟠 CANCELADO', external:'📦 EXTERNO' };
-  const bgColors = { ok:'rgba(0,200,83,.15)', dup:'rgba(255,230,0,.1)', cancelled:'rgba(255,109,0,.15)', external:'rgba(41,121,255,.15)' };
+  const colors = { ok:'#00C853', dup:'#FFE600', cancelled:'#FF6D00', external:'#2979FF', notfound:'#FF1744' };
+  const labels = { ok:'✅ OK', dup:'🟡 DUPLICADO', cancelled:'🟠 CANCELADO', external:'📦 EXTERNO', notfound:'🔴 NO PERTENECE' };
+  const bgColors = { ok:'rgba(0,200,83,.15)', dup:'rgba(255,230,0,.1)', cancelled:'rgba(255,109,0,.15)', external:'rgba(41,121,255,.15)', notfound:'rgba(255,23,68,.15)' };
   const t = type || 'ok';
   d.style.background = bgColors[t] || bgColors.ok;
   d.style.borderColor = colors[t] || colors.ok;
