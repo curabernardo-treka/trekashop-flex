@@ -1160,8 +1160,9 @@ function updateHomeUI(state) {
 let scanHistory = []; // last 5 scans
 
 function addScanHistory(id, status) {
-  scanHistory.unshift({ id, status, time: new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) });
-  if(scanHistory.length > 5) scanHistory.pop();
+  scanHistory.unshift({ id: String(id), status, time: new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) });
+  if(scanHistory.length > 8) scanHistory.pop();
+  renderScanHistory();
   renderScanHistory();
 }
 
@@ -1657,19 +1658,6 @@ let lastScanTime=0;
 // ─── SCAN HANDLER ────────────────────────────
 
 async function handleScan(raw) {
-  const now = Date.now();
-  // Skip debounce for cancelled, duplicate, not-found — always respond immediately
-  const _earlyId = extractId(raw);
-  const _isCancelled = session?.cancelledIds?.includes(_earlyId);
-  const _isDuplicate = session?.packages?.find(p => p.shipmentId === _earlyId);
-  const _isInML = pendingShipments.find(s => s.shipmentId === _earlyId);
-  const _wouldBeNotFound = pendingShipments.length > 0 && !_isInML && !isZuidenPackage(raw);
-  const _skipDebounce = _isCancelled || _isDuplicate || _wouldBeNotFound;
-  if(!_skipDebounce) {
-    if(now - lastScanTime < 2000) return;
-  }
-  lastScanTime = now;
-
   // Auto-create session if none
   if(!session) {
     session = { chofer: null, startTime: new Date().toISOString(), packages: [], signature: null, cancelledIds: [], cancelledCache: {} };
@@ -1678,6 +1666,16 @@ async function handleScan(raw) {
 
   const shipId = extractId(raw);
   const isZuiden = isZuidenPackage(raw);
+
+  // Debounce — skip for states that always need response
+  const now = Date.now();
+  const _isCancelled = session.cancelledIds?.includes(shipId);
+  const _isDuplicate = !!session.packages.find(p => p.shipmentId === shipId);
+  const _isInML = !!pendingShipments.find(s => s.shipmentId === shipId);
+  const _wouldBeNotFound = !isZuiden && pendingShipments.length > 0 && !_isInML;
+  const _skipDebounce = _isCancelled || _isDuplicate || _wouldBeNotFound;
+  if(!_skipDebounce && (now - lastScanTime < 2000)) return;
+  lastScanTime = now;
 
   // ── ZUIDEN external package ──
   if(isZuiden) {
@@ -1969,6 +1967,7 @@ function dismissCancelledAlert() {
 }
 
 function showDupAlert(shipId) {
+  console.log('showDupAlert called:', shipId);
   const existing = document.getElementById('dupOverlay');
   if(existing) existing.remove();
   const el = document.createElement('div');
