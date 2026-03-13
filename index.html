@@ -454,16 +454,16 @@ nav{
 
 <div id="tabbar">
   <button class="tab-btn active" id="tab-home" ontouchstart="tabTap(event,'home')" onclick="tabTap(event,'home')">
-    <span class="tab-icon">🏠</span><span>Inicio</span>
+    <span class="tab-icon">🏠</span><span>Lote</span>
   </button>
   <button class="tab-btn" id="tab-scanner" ontouchstart="tabTap(event,'scanner')" onclick="tabTap(event,'scanner')">
-    <span class="tab-icon">📷</span><span>Scanner</span>
+    <span class="tab-icon">📷</span><span>Escanear</span>
   </button>
   <button class="tab-btn" id="tab-status" ontouchstart="tabTap(event,'status')" onclick="tabTap(event,'status')">
     <span class="tab-icon">📊</span><span>Estado</span><span id="pendingBadge" style="display:none;background:var(--err);color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-left:2px;font-weight:700"></span>
   </button>
   <button class="tab-btn" id="tab-choferes" ontouchstart="tabTap(event,'choferes')" onclick="tabTap(event,'choferes')">
-    <span class="tab-icon">🚗</span><span>Choferes</span>
+    <span class="tab-icon">🚗</span><span>Chofer</span>
   </button>
   <button class="tab-btn" id="tab-config" ontouchstart="tabTap(event,'config')" onclick="tabTap(event,'config')">
     <span class="tab-icon">⚙️</span><span>Config</span>
@@ -538,19 +538,21 @@ nav{
 <div class="view" id="view-scanner">
   <nav>
     <div class="nav-logo">
-      <div class="nav-logo-mark">📦</div>
+      <div class="nav-logo-mark">📷</div>
       <div class="nav-logo-text">
-        <strong>TREKASHOP</strong>
-        <span>Retiro Flex</span>
+        <strong>ESCANEANDO</strong>
+        <span id="scannerSubtitle">Apuntá al QR del paquete</span>
       </div>
     </div>
-    <div class="nav-actions">
+    <div class="nav-actions" style="display:flex;align-items:center;gap:8px">
+      <div id="scanLiveCounter" style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--y);letter-spacing:1px">0/?</div>
       <div class="dot" id="scanDot"></div>
     </div>
   </nav>
 
   <!-- Big number flash -->
   <div class="big-number-display" id="bigNumDisplay">
+    <div id="bigNumLabel" style="font-size:24px;font-weight:700;margin-bottom:8px;color:var(--ok)"></div>
     <div class="pkg-num" id="bigNumValue">—</div>
     <div class="pkg-id" id="bigNumId"></div>
     <div class="pkg-who" id="bigNumWho"></div>
@@ -582,8 +584,12 @@ nav{
     <!-- Scanner -->
     <div class="card">
       <div class="card-head">
-        <span class="card-label">Cámara</span>
+        <span class="card-label">Cámara activa</span>
         <div class="dot" id="camDot"></div>
+      </div>
+      <!-- Progress bar -->
+      <div style="background:var(--border);border-radius:99px;height:6px;margin:0 16px 12px;overflow:hidden">
+        <div id="scanProgressBar" style="height:100%;background:var(--ok);border-radius:99px;width:0%;transition:width .3s ease"></div>
       </div>
       <div class="scanner-wrap" id="scannerWrap">
         <div class="cam-placeholder" id="camPH">
@@ -789,37 +795,53 @@ nav{
       <div class="nav-logo-mark">⚙️</div>
       <div class="nav-logo-text">
         <strong>CONFIGURACIÓN</strong>
-        <span>API y Email</span>
+        <span>Emails y opciones</span>
       </div>
     </div>
   </nav>
   <div class="scroll-area">
 
+    <!-- EMAILS -->
     <div class="settings-section">
-      <h3>Mercado Libre</h3>
+      <h3>📧 Destinatarios del reporte</h3>
       <div class="card"><div class="card-body">
-        <div class="field"><label>Access Token</label><input class="inp" id="cfgMLToken" type="password" placeholder="APP_USR-..."/></div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">El email con el detalle del retiro se enviará a estas direcciones al finalizar cada lote.</p>
+        <div class="field">
+          <label class="form-label">Email Trekashop</label>
+          <input class="inp" id="cfgEmail" type="email" placeholder="admin@trekashop.com"/>
+        </div>
+        <div class="field">
+          <label class="form-label">Email Zuiden</label>
+          <input class="inp" id="cfgEmailZuiden" type="email" placeholder="operaciones@zuiden.com"/>
+        </div>
+        <div class="field">
+          <label class="form-label">Email adicional (opcional)</label>
+          <input class="inp" id="cfgEmailExtra" type="email" placeholder="otro@email.com"/>
+        </div>
       </div></div>
     </div>
 
+    <!-- SENDGRID — para envío automático -->
     <div class="settings-section">
-      <h3>Email (SendGrid)</h3>
+      <h3>📤 Envío automático (SendGrid)</h3>
       <div class="card"><div class="card-body">
-        <div class="field"><label>API Key SendGrid</label><input class="inp" id="cfgSGKey" type="password" placeholder="SG...."/></div>
-        <div class="field"><label>Email remitente</label><input class="inp" id="cfgSGFrom" type="email" placeholder="retiros@trekashop.com"/></div>
-        <div class="field"><label>Email destino por defecto</label><input class="inp" id="cfgEmail" type="email" placeholder="admin@trekashop.com"/></div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Sin configurar, el email se abre en tu cliente de correo. Con SendGrid se envía automáticamente.</p>
+        <div class="field"><label class="form-label">API Key SendGrid</label><input class="inp" id="cfgSGKey" type="password" placeholder="SG...."/></div>
+        <div class="field"><label class="form-label">Email remitente</label><input class="inp" id="cfgSGFrom" type="email" placeholder="retiros@trekashop.com"/></div>
       </div></div>
     </div>
 
+    <!-- STATUS -->
     <div class="settings-section">
-      <h3>Demo</h3>
       <div class="card"><div class="card-body">
-        <p style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:12px">Sin credenciales la app funciona en modo demo con datos simulados. Configurá las APIs arriba para conectarte a Mercado Libre y enviar emails reales.</p>
-        <div id="cfgStatus" class="badge badge-y">MODO DEMO</div>
+        <div id="cfgStatus" class="badge badge-y">VERIFICANDO...</div>
       </div></div>
     </div>
 
-    <button class="btn btn-y btn-full" onclick="saveConfig()">💾 Guardar configuración</button>
+    <!-- Hidden ML token (not shown to user) -->
+    <input type="hidden" id="cfgMLToken"/>
+
+    <button class="btn btn-y btn-full" onclick="saveConfig()">💾 Guardar</button>
   </div>
 </div>
 
@@ -998,7 +1020,20 @@ function updatePendingBadge() {
 
 
 let choferes = JSON.parse(localStorage.getItem('ts_choferes') || '[]');
-let session = null; // { chofer, startTime, packages:[] }
+let session = null;
+
+function saveSession() {
+  if(session) localStorage.setItem('ts_session', JSON.stringify(session));
+}
+function restoreSession() {
+  try {
+    const s = localStorage.getItem('ts_session');
+    if(s) {
+      session = JSON.parse(s);
+      console.log('Session restored:', session.packages?.length, 'packages');
+    }
+  } catch(e) { session = null; }
+} // { chofer, startTime, packages:[] }
 let codeReader = null;
 let cameraOn = false;
 let facingMode = 'environment';
@@ -1034,7 +1069,7 @@ function switchView(name) {
   document.getElementById('view-'+name).classList.add('active');
   const tabEl = document.getElementById('tab-'+name);
   if(tabEl) tabEl.classList.add('active');
-  if(name === 'scanner' && !cameraOn) setTimeout(() => startCamera(), 300);
+  if(name === 'scanner') { setTimeout(() => startCamera(), 300); updateLiveCounter(); }
   if(name !== 'scanner' && cameraOn) stopCamera();
   if(name === 'status') updateStatusView();
 }
@@ -1108,6 +1143,28 @@ function updateHomeUI(state) {
   if(total) total.textContent = totalCount;
 }
 
+
+// ─── SCAN HISTORY ────────────────────────────
+let scanHistory = []; // last 5 scans
+
+function addScanHistory(id, status) {
+  scanHistory.unshift({ id, status, time: new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) });
+  if(scanHistory.length > 5) scanHistory.pop();
+  renderScanHistory();
+}
+
+function renderScanHistory() {
+  const el = document.getElementById('scanHistoryList');
+  if(!el) return;
+  const colors = { 'OK':'var(--ok)', 'DUPLICADO':'var(--err)', 'CANCELADO':'#FF6D00', 'EXTERNO':'#2979FF' };
+  el.innerHTML = scanHistory.map(h => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="font-family:monospace;font-size:12px;color:var(--muted)">${h.id}</div>
+      <div style="font-size:11px;font-weight:700;color:${colors[h.status]||'var(--text)'}">${h.status}</div>
+      <div style="font-size:10px;color:var(--muted)">${h.time}</div>
+    </div>
+  `).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px">Sin escaneos</div>';
+}
 // ─── STATUS VIEW ─────────────────────────────
 function updateStatusView() {
   const scannedIds = session?.packages?.map(p=>p.shipmentId) || [];
@@ -1183,6 +1240,8 @@ function loadConfig() {
   document.getElementById('cfgSGKey').value = cfg.sgKey || '';
   document.getElementById('cfgSGFrom').value = cfg.sgFrom || '';
   document.getElementById('cfgEmail').value = cfg.email || '';
+  document.getElementById('cfgEmailZuiden').value = cfg.emailZuiden || '';
+  document.getElementById('cfgEmailExtra').value = cfg.emailExtra || '';
   updateCfgStatus();
 }
 function saveConfig() {
@@ -1191,6 +1250,8 @@ function saveConfig() {
     sgKey: document.getElementById('cfgSGKey').value.trim(),
     sgFrom: document.getElementById('cfgSGFrom').value.trim(),
     email: document.getElementById('cfgEmail').value.trim(),
+    emailZuiden: document.getElementById('cfgEmailZuiden').value.trim(),
+    emailExtra: document.getElementById('cfgEmailExtra').value.trim(),
   };
   localStorage.setItem('ts_cfg', JSON.stringify(cfg));
   updateCfgStatus();
@@ -1556,6 +1617,7 @@ async function handleScan(raw) {
   // Auto-create anonymous session if none exists
   if(!session) {
     session = { chofer: null, startTime: new Date().toISOString(), packages: [], signature: null, cancelledIds: [], cancelledCache: {} };
+    saveSession();
   }
 
   const shipId = extractId(raw);
@@ -1566,9 +1628,39 @@ async function handleScan(raw) {
     toast('🚫 ¡PAQUETE CANCELADO! No entregar','err');
     // Re-trigger the cancelled alert with cached data
     const cached = session.cancelledCache && session.cancelledCache[shipId];
-    if(cached) { showCancelledAlert(cached); return; }
+    if(cached) { addScanHistory(shipId||'?', 'CANCELADO'); showCancelledAlert(cached); return; }
     // fallback: lookup again
-    await lookupPackage(shipId, raw);
+    // Check if Zuiden JSON or not in ML list → external
+  const isZuiden = isZuidenPackage(raw);
+  const isExternal = isZuiden || (pendingShipments.length > 0 && !pendingShipments.find(s=>s.shipmentId===shipId));
+  if(isExternal) {
+    beepOk();
+    vibrate([100]);
+    // Parse Zuiden data if available
+    let zuidenInfo = {};
+    try { zuidenInfo = JSON.parse(raw.trim()); } catch(e) {}
+    const label = isZuiden ? 'ZUIDEN' : 'EXTERNO';
+    const displayId = isZuiden ? ('Zuiden #' + (zuidenInfo.did || shipId)) : shipId;
+    showBigNum(session.packages.length+1, displayId, '', 'external');
+    addScanHistory(displayId, label);
+    addPackage({
+      shipmentId: shipId,
+      account: label,
+      orderId: zuidenInfo.did || '—',
+      recipientName: '—',
+      address: '—',
+      orderTime: null,
+      orderDate: null,
+      isExternal: true,
+      zuidenDid: zuidenInfo.did || null,
+      zuidenLocal: zuidenInfo.local || null,
+      raw: raw,
+      scannedAt: new Date().toISOString(),
+    });
+    toast(`📦 ${label} registrado`, 'ok');
+    return;
+  }
+  await lookupPackage(shipId, raw);
     return;
   }
 
@@ -1581,29 +1673,92 @@ async function handleScan(raw) {
 
   beepOk();
   showBigNum(session.packages.length+1, shipId, session.chofer?.name || '');
+  // Check if Zuiden JSON or not in ML list → external
+  const isZuiden = isZuidenPackage(raw);
+  const isExternal = isZuiden || (pendingShipments.length > 0 && !pendingShipments.find(s=>s.shipmentId===shipId));
+  if(isExternal) {
+    beepOk();
+    vibrate([100]);
+    // Parse Zuiden data if available
+    let zuidenInfo = {};
+    try { zuidenInfo = JSON.parse(raw.trim()); } catch(e) {}
+    const label = isZuiden ? 'ZUIDEN' : 'EXTERNO';
+    const displayId = isZuiden ? ('Zuiden #' + (zuidenInfo.did || shipId)) : shipId;
+    showBigNum(session.packages.length+1, displayId, '', 'external');
+    addScanHistory(displayId, label);
+    addPackage({
+      shipmentId: shipId,
+      account: label,
+      orderId: zuidenInfo.did || '—',
+      recipientName: '—',
+      address: '—',
+      orderTime: null,
+      orderDate: null,
+      isExternal: true,
+      zuidenDid: zuidenInfo.did || null,
+      zuidenLocal: zuidenInfo.local || null,
+      raw: raw,
+      scannedAt: new Date().toISOString(),
+    });
+    toast(`📦 ${label} registrado`, 'ok');
+    return;
+  }
   await lookupPackage(shipId, raw);
 }
 
 function extractId(text) {
-  const u=text.match(/shipments?[\/=](\d+)/i); if(u) return u[1];
-  const n=text.match(/\d{8,}/); if(n) return n[0];
-  return text.trim().replace(/\W/g,'').slice(0,20) || text.trim();
+  const t = text.trim();
+  // Zuiden JSON format: {"local":1,"did":"1505838","cliente":192,"empresa":55}
+  try {
+    const j = JSON.parse(t);
+    if(j && j.did) return 'ZUI-' + j.did;
+    if(j && j.local) return 'ZUI-' + JSON.stringify(j).replace(/\W/g,'').slice(0,16);
+  } catch(e) {}
+  // ML Flex: "Envio: 46629187728"
+  const envio = t.match(/[Ee]nv[íi]o[:\s]+(\d{8,})/); if(envio) return envio[1];
+  // URL shipments
+  const u = t.match(/shipments[\/=](\d{6,})/i); if(u) return u[1];
+  // Last long number (Pack ID format)
+  const allNums = t.match(/\d{8,}/g);
+  if(allNums && allNums.length > 0) return allNums[allNums.length - 1];
+  const d = t.replace(/\D/g,''); if(d.length >= 6) return d;
+  return t.slice(0,30);
 }
 
-function showBigNum(num, id, who) {
-  const d=document.getElementById('bigNumDisplay');
-  document.getElementById('bigNumValue').textContent=num;
-  document.getElementById('bigNumId').textContent='ID: '+id;
-  document.getElementById('bigNumWho').textContent='Chofer: '+who;
-  d.style.display='flex';
+function isZuidenPackage(text) {
+  try { const j = JSON.parse(text.trim()); return !!(j && (j.did || j.local)); } catch(e) { return false; }
+}
+
+function isExternalPackage(text, shipId) {
+  if(isZuidenPackage(text)) return true;
+  if(!pendingShipments.length) return false;
+  return !pendingShipments.find(s => s.shipmentId === shipId);
+}
+
+function showBigNum(num, id, who, type) {
+  // type: 'ok' | 'dup' | 'cancelled' | 'external'
+  const d = document.getElementById('bigNumDisplay');
+  const colors = { ok:'#00C853', dup:'#FF1744', cancelled:'#FF6D00', external:'#2979FF' };
+  const labels = { ok:'✅ OK', dup:'🔴 DUPLICADO', cancelled:'🟠 CANCELADO', external:'📦 EXTERNO' };
+  const bgColors = { ok:'rgba(0,200,83,.15)', dup:'rgba(255,23,68,.15)', cancelled:'rgba(255,109,0,.15)', external:'rgba(41,121,255,.15)' };
+  const t = type || 'ok';
+  d.style.background = bgColors[t] || bgColors.ok;
+  d.style.borderColor = colors[t] || colors.ok;
+  document.getElementById('bigNumValue').textContent = num;
+  document.getElementById('bigNumLabel').textContent = labels[t] || labels.ok;
+  document.getElementById('bigNumLabel').style.color = colors[t] || colors.ok;
+  document.getElementById('bigNumId').textContent = 'ID: ' + id;
+  document.getElementById('bigNumWho').textContent = who ? 'Chofer: ' + who : '';
+  d.style.display = 'flex';
   clearTimeout(window._bigNumTimer);
-  window._bigNumTimer=setTimeout(()=>{ d.style.display='none'; },3500);
+  window._bigNumTimer = setTimeout(() => { d.style.display = 'none'; }, 1500);
 }
 
 // ─── PACKAGE LOOKUP ──────────────────────────
 async function manualSearch() {
   if(!session) {
     session = { chofer: null, startTime: new Date().toISOString(), packages: [], signature: null, cancelledIds: [], cancelledCache: {} };
+    saveSession();
   }
   const val=document.getElementById('manualId').value.trim();
   if(!val) { toast('⚠️ Ingresá un ID','err'); return; }
@@ -1611,7 +1766,7 @@ async function manualSearch() {
   if(session.cancelledIds && session.cancelledIds.includes(shipId)) {
     beepErr(); toast('🚫 ¡PAQUETE CANCELADO! No entregar','err');
     const cached = session.cancelledCache && session.cancelledCache[shipId];
-    if(cached) { showCancelledAlert(cached); document.getElementById('manualId').value=''; return; }
+    if(cached) { addScanHistory(shipId||'?', 'CANCELADO'); showCancelledAlert(cached); document.getElementById('manualId').value=''; return; }
   }
   if(session.packages.find(p=>p.shipmentId===shipId)) {
     beepDup(); toast('⚠️ Paquete ya escaneado','warn'); return;
@@ -1650,7 +1805,7 @@ async function fetchML(shipId, raw) {
     const isCancelled = ship.status==='cancelled' || order?.status==='cancelled';
     if(isCancelled) {
       beepErr();
-      showCancelledAlert(buildMLPkg(ship, order, shipId, raw));
+      addScanHistory(shipId||'?', 'CANCELADO'); showCancelledAlert(buildMLPkg(ship, order, shipId, raw));
       return;
     }
     addPackage(buildMLPkg(ship, order, shipId, raw));
@@ -1703,21 +1858,35 @@ async function fetchDemo(shipId, raw) {
     scannedAt: new Date().toISOString(),
     raw,
   };
-  if(isCancelled) { beepErr(); showCancelledAlert(pkg); return; }
+  if(isCancelled) { beepErr(); addScanHistory(shipId||'?', 'CANCELADO'); showCancelledAlert(pkg); return; }
   addPackage(pkg);
 }
 
 function addPackage(pkg) {
   session.packages.push(pkg);
+  saveSession();
   updateSessionUI();
   updatePendingBadge();
-  // refresh status view if open
+  updateLiveCounter();
   if(document.getElementById("view-status")?.classList.contains("active")) updateStatusView();
   const remaining = pendingShipments.filter(s => !session.packages.map(p=>p.shipmentId).includes(s.shipmentId));
   if(pendingLoaded && remaining.length === 0 && pendingShipments.length > 0) {
     toast('🎉 ¡Todos los paquetes escaneados!','ok');
   } else {
     toast(`📦 Paquete #${session.packages.length} — ${remaining.length} pendientes`,'ok');
+  }
+}
+
+function updateLiveCounter() {
+  const scanned = session?.packages?.length || 0;
+  const total = pendingShipments.length || 0;
+  const el = document.getElementById('scanLiveCounter');
+  if(el) el.textContent = scanned + '/' + (total || '?');
+  const bar = document.getElementById('scanProgressBar');
+  if(bar && total > 0) bar.style.width = Math.round(scanned/total*100) + '%';
+  if(total > 0 && scanned >= total) {
+    vibrate([200,100,200,100,400]);
+    toast('🎉 LOTE COMPLETO!', 'ok');
   }
 }
 
@@ -1880,14 +2049,14 @@ function updateSigPreviewInConfirm() {
 function closeConfirmSend() { document.getElementById('confirmSend').classList.remove('open'); }
 
 async function doSendEmail() {
-  const to=document.getElementById('sendEmailInp').value.trim();
-  if(!to) { toast('⚠️ Ingresá un email','err'); return; }
+  const to = document.getElementById('sendEmailInp').value.trim();
   closeConfirmSend();
-
-  if(cfg.sgKey&&cfg.sgFrom) {
-    await sendViaSendGrid(to);
+  // Build recipient list from config
+  const allTo = [to, cfg.emailZuiden, cfg.emailExtra].filter(Boolean).join(',');
+  if(cfg.sgKey && cfg.sgFrom) {
+    await sendViaSendGrid(allTo);
   } else {
-    sendViaMailto(to);
+    sendViaMailto(allTo);
   }
 }
 
@@ -1928,6 +2097,9 @@ function sendViaMailto(to) {
 
 function endSession() {
   session=null;
+  localStorage.removeItem('ts_session');
+  scanHistory=[];
+  renderScanHistory();
   updateSessionUI();
   document.getElementById('bigNumDisplay').style.display='none';
 }
@@ -2145,6 +2317,9 @@ updateSessionUI();
 
 document.getElementById('manualId').addEventListener('keydown',e=>{ if(e.key==='Enter') manualSearch(); });
 
+// Restore session from localStorage
+restoreSession();
+if(session) updateSessionUI();
 // Preload scanner library
 setTimeout(loadZXing, 1000);
 // Load pending ML shipments on startup
