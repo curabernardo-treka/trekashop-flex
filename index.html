@@ -995,9 +995,29 @@ async function loadPendingShipments() {
     if(data.errors?.length) console.warn('Proxy errors:', data.errors);
   } catch(e) {
     console.error('loadPendingShipments:', e.message);
-    toast('⚠️ Error ML: ' + e.message, 'err');
+    // Try to load from cache
+    try {
+      const cached = localStorage.getItem('ts_pending_cache');
+      if(cached) {
+        const c = JSON.parse(cached);
+        pendingShipments = c.shipments || [];
+        const ago = c.cachedAt ? new Date(c.cachedAt).toLocaleString('es-AR') : '?';
+        toast(`📵 Sin internet — usando lista del ${ago}`, 'warn');
+      } else {
+        toast('⚠️ Sin internet y sin caché. Conectate para cargar los envíos.', 'err');
+      }
+    } catch(e2) {
+      toast('⚠️ Sin internet ni caché disponible', 'err');
+    }
   }
   pendingLoaded = true;
+  // Cache in localStorage for offline use
+  if(pendingShipments.length > 0) {
+    localStorage.setItem('ts_pending_cache', JSON.stringify({
+      shipments: pendingShipments,
+      cachedAt: new Date().toISOString()
+    }));
+  }
   updatePendingBadge();
   updateHomeUI('done');
   console.log(`Loaded ${pendingShipments.length} pending shipments`);
@@ -1122,7 +1142,8 @@ function updateHomeUI(state) {
 
   const connected = pendingLoaded;
   dot.style.background = connected ? 'var(--ok)' : 'var(--y)';
-  txt.textContent = connected ? `✅ Conectado · ${pendingShipments.length} envíos cargados` : '🔄 Conectando con Mercado Libre…';
+  const isFromCache = localStorage.getItem('ts_pending_cache') && !navigator.onLine;
+  txt.textContent = connected ? (isFromCache ? `📵 Sin internet · lista en caché (${pendingShipments.length})` : `✅ Conectado · ${pendingShipments.length} envíos cargados`) : '🔄 Conectando con Mercado Libre…';
 
   // Per-account counts
   let totalCount = 0;
