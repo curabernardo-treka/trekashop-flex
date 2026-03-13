@@ -821,15 +821,9 @@ nav{
       </div></div>
     </div>
 
-    <!-- SENDGRID — para envío automático -->
-    <div class="settings-section">
-      <h3>📤 Envío automático (SendGrid)</h3>
-      <div class="card"><div class="card-body">
-        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Sin configurar, el email se abre en tu cliente de correo. Con SendGrid se envía automáticamente.</p>
-        <div class="field"><label class="form-label">API Key SendGrid</label><input class="inp" id="cfgSGKey" type="password" placeholder="SG...."/></div>
-        <div class="field"><label class="form-label">Email remitente</label><input class="inp" id="cfgSGFrom" type="email" placeholder="retiros@trekashop.com"/></div>
-      </div></div>
-    </div>
+    <!-- Hidden SG fields — configured via code -->
+    <input type="hidden" id="cfgSGKey"/>
+    <input type="hidden" id="cfgSGFrom"/>
 
     <!-- STATUS -->
     <div class="settings-section">
@@ -1156,14 +1150,14 @@ function addScanHistory(id, status) {
 function renderScanHistory() {
   const el = document.getElementById('scanHistoryList');
   if(!el) return;
-  const colors = { 'OK':'var(--ok)', 'DUPLICADO':'var(--err)', 'CANCELADO':'#FF6D00', 'EXTERNO':'#2979FF' };
-  el.innerHTML = scanHistory.map(h => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-      <div style="font-family:monospace;font-size:12px;color:var(--muted)">${h.id}</div>
-      <div style="font-size:11px;font-weight:700;color:${colors[h.status]||'var(--text)'}">${h.status}</div>
-      <div style="font-size:10px;color:var(--muted)">${h.time}</div>
+  const colors = { 'OK':'var(--ok)', 'DUPLICADO':'#FFE600', 'CANCELADO':'#FF6D00', 'ZUIDEN':'#2979FF', 'EXTERNO':'#2979FF' };
+  el.innerHTML = scanHistory.length ? scanHistory.map(h => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border)">
+      <div style="font-family:monospace;font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.id}</div>
+      <div style="font-size:12px;font-weight:700;color:${colors[h.status]||'var(--text)'};margin:0 8px;flex-shrink:0">${h.status}</div>
+      <div style="font-size:11px;color:var(--muted);flex-shrink:0">${h.time}</div>
     </div>
-  `).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px">Sin escaneos</div>';
+  `).join('') : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Escaneá un paquete para ver el historial</div>';
 }
 // ─── STATUS VIEW ─────────────────────────────
 function updateStatusView() {
@@ -1221,12 +1215,12 @@ function showStatusDetail(type) {
         <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
             <div style="flex:1">
-              <div style="font-size:13px;font-weight:600">${s.recipientName}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.account || ''} · ID ${s.shipmentId}</div>
-              ${s.address && s.address!=='—' ? `<div style="font-size:11px;color:var(--muted2);margin-top:2px">${s.address}</div>` : ''}
-              ${s.orderId && s.orderId!=='—' ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">Orden: ${s.orderId}</div>` : ''}
+              <div style="font-size:15px;font-weight:700;color:var(--text)">${s.recipientName && s.recipientName!=='—' ? s.recipientName : '(sin nombre)'}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--y);margin-top:3px">${s.account || ''}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:monospace">ID ${s.shipmentId}</div>
+              ${s.address && s.address!=='—' ? `<div style="font-size:11px;color:var(--muted2);margin-top:3px">${s.address}</div>` : ''}
             </div>
-            ${s.orderTime ? `<div style="font-size:15px;font-weight:700;color:var(--y);flex-shrink:0;margin-left:8px">${s.orderTime}</div>` : ''}
+            ${s.orderTime ? `<div style="font-size:18px;font-weight:700;color:var(--y);flex-shrink:0;margin-left:8px">${s.orderTime}</div>` : ''}
           </div>
         </div>
       `).join('')}
@@ -1664,10 +1658,12 @@ async function handleScan(raw) {
     return;
   }
 
-  // Check duplicate (already added OK packages)
+  // Check duplicate
   if(session.packages.find(p=>p.shipmentId===shipId)) {
     beepDup();
-    toast('⚠️ Paquete ya escaneado','warn');
+    vibrate([100,50,100]);
+    showBigNum(session.packages.length, shipId, '', 'dup');
+    addScanHistory(shipId, 'DUPLICADO');
     return;
   }
 
@@ -1738,9 +1734,9 @@ function isExternalPackage(text, shipId) {
 function showBigNum(num, id, who, type) {
   // type: 'ok' | 'dup' | 'cancelled' | 'external'
   const d = document.getElementById('bigNumDisplay');
-  const colors = { ok:'#00C853', dup:'#FF1744', cancelled:'#FF6D00', external:'#2979FF' };
-  const labels = { ok:'✅ OK', dup:'🔴 DUPLICADO', cancelled:'🟠 CANCELADO', external:'📦 EXTERNO' };
-  const bgColors = { ok:'rgba(0,200,83,.15)', dup:'rgba(255,23,68,.15)', cancelled:'rgba(255,109,0,.15)', external:'rgba(41,121,255,.15)' };
+  const colors = { ok:'#00C853', dup:'#FFE600', cancelled:'#FF6D00', external:'#2979FF' };
+  const labels = { ok:'✅ OK', dup:'🟡 DUPLICADO', cancelled:'🟠 CANCELADO', external:'📦 EXTERNO' };
+  const bgColors = { ok:'rgba(0,200,83,.15)', dup:'rgba(255,230,0,.1)', cancelled:'rgba(255,109,0,.15)', external:'rgba(41,121,255,.15)' };
   const t = type || 'ok';
   d.style.background = bgColors[t] || bgColors.ok;
   d.style.borderColor = colors[t] || colors.ok;
@@ -2209,7 +2205,7 @@ function buildEmailHTML() {
   </div>
 
 </div><!-- Master photo input at body level — outside all views/transforms/overflow -->
-<input type="file" accept="image/*" id="photoFileMaster"
+<input type="file" accept="image/*" capture="environment" id="photoFileMaster"
   style="position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0"
   onchange="handlePhoto(event)"/>
 </body></html>`;
@@ -2327,7 +2323,7 @@ setTimeout(async () => { updateHomeUI("loading"); await loadPendingShipments(); 
 </script>
 
 <!-- Master photo input at body level — outside all views/transforms/overflow -->
-<input type="file" accept="image/*" id="photoFileMaster"
+<input type="file" accept="image/*" capture="environment" id="photoFileMaster"
   style="position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0"
   onchange="handlePhoto(event)"/>
 </body>
