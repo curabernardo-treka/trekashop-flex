@@ -57,7 +57,7 @@ html{height:100%}
 body{background:var(--b);color:var(--text);font-family:'Sora',sans-serif;min-height:100dvh;overflow-x:hidden}
 
 /* ── VIEWS ── */
-.view{display:none;flex-direction:column;min-height:100dvh;padding-top:64px}
+.view{display:none;flex-direction:column;min-height:100dvh;padding-top:72px;padding-bottom:0}
 .view.active{display:flex}
 
 /* ── NAV ── */
@@ -79,11 +79,11 @@ nav{
 
 /* ── BOTTOM TAB BAR ── */
 #tabbar{
-  position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  position:fixed;top:0;left:0;right:0;z-index:9999;
   background:#111111;
-  border-top:2px solid var(--border2);
+  border-bottom:2px solid var(--border2);
   display:flex;
-  padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-top:env(safe-area-inset-top,0px);
   pointer-events:auto;
 }
 .tab-btn{
@@ -108,7 +108,7 @@ nav{
 .tab-btn.tap-anim .tab-icon{ transform:scale(1.5) !important; }
 
 /* ── SCROLLABLE CONTENT ── */
-.scroll-area{flex:1;overflow-y:auto;padding:16px 16px 100px}
+.scroll-area{flex:1;overflow-y:auto;padding:16px 16px 32px}
 
 /* ── HOME ACCOUNT CARDS ── */
 .account-card {
