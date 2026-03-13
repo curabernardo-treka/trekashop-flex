@@ -1120,7 +1120,7 @@ function startScanning() {
 
 async function reloadPendingHome() {
   updateHomeUI('loading');
-  await reloadPending();
+  await loadPendingShipments();
   updateHomeUI('done');
 }
 
@@ -1625,7 +1625,7 @@ async function flipCamera() {
 // ─── SCAN HANDLER ────────────────────────────
 let lastScanTime=0;
 // ─── SCAN HANDLER ────────────────────────────
-let lastScanTime=0;
+
 async function handleScan(raw) {
   const now = Date.now();
   if(now - lastScanTime < 2000) return;
