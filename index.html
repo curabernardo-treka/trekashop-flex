@@ -561,14 +561,8 @@ nav{
   <div class="scroll-area">
 
     <!-- Session bar -->
-    <div id="sessionBar" class="session-bar" style="display:none">
-      <div class="session-avatar" id="sessionAvatar">👤</div>
-      <div class="session-info">
-        <div class="session-name" id="sessionName">—</div>
-        <div class="session-dni" id="sessionDni">DNI —</div>
-      </div>
-      <div class="session-count" id="sessionCount">0 pkgs</div>
-    </div>
+    <!-- session bar removed — info shown in header counter -->
+    <div id="sessionBar" style="display:none"><span id="sessionAvatar"></span><span id="sessionName"></span><span id="sessionDni"></span><span id="sessionCount"></span></div>
 
     <!-- No session warning — hidden, scanner works always -->
     <div id="noSessionWarn" style="display:none"></div>
@@ -761,10 +755,10 @@ nav{
 
     <div class="card"><div class="card-body">
       <div class="field"><label>Nombre completo</label>
-        <input class="inp" id="choferName" placeholder="Ej: Juan Pérez" autocomplete="off" style="font-size:16px"/>
+        <input class="inp" id="choferName" placeholder="Ej: Juan Pérez" autocomplete="off" inputmode="text" pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+" style="font-size:16px" onkeypress="return /[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/.test(event.key)"/>
       </div>
       <div class="field" style="margin-bottom:0"><label>DNI</label>
-        <input class="inp" id="choferDNI" placeholder="Ej: 30123456" inputmode="numeric" autocomplete="off" style="font-size:16px"/>
+        <input class="inp" id="choferDNI" placeholder="Ej: 30123456" inputmode="numeric" pattern="[0-9]*" type="tel" autocomplete="off" style="font-size:16px" onkeypress="return /[0-9]/.test(event.key)"/>
       </div>
     </div></div>
 
@@ -826,6 +820,16 @@ nav{
 
     <!-- Hidden ML token (not shown to user) -->
     <input type="hidden" id="cfgMLToken"/>
+
+    <!-- Modo offline -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">📵 Modo Sin Internet</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Acepta todos los escaneos sin validar contra ML.</div>
+      <button id="offlineModeBtn" onclick="toggleOfflineMode()"
+        style="width:100%;padding:14px;border-radius:10px;border:2px solid var(--border);background:var(--card);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;touch-action:manipulation">
+        📶 Modo online activo
+      </button>
+    </div>
 
     <button class="btn btn-y btn-full" onclick="saveConfig()">💾 Guardar</button>
   </div>
