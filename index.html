@@ -1984,27 +1984,54 @@ function dismissCancelledAlert() {
 }
 
 function showDupAlert(shipId) {
-  console.log('showDupAlert called:', shipId);
   const existing = document.getElementById('dupOverlay');
   if(existing) existing.remove();
+
+  // Find full package info from session
+  const pkg = session && session.packages.find(p => p.shipmentId === shipId);
+  const pkgNum = pkg ? (session.packages.indexOf(pkg) + 1) : '?';
+  const nombre = pkg?.recipientName && pkg.recipientName !== '—' ? pkg.recipientName : '—';
+  const dir = pkg?.address && pkg.address !== '—' ? pkg.address : '—';
+  const cuenta = pkg?.account || pkg?.mlAccount || '—';
+
   const el = document.createElement('div');
   el.id = 'dupOverlay';
-  el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(255,230,0,0.97);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .2s;padding:24px;text-align:center';
+  el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#FFE600;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .2s;padding:24px;text-align:center';
   el.innerHTML = `
-    <div style="font-size:64px;margin-bottom:16px">🟡</div>
-    <div style="font-size:32px;font-weight:900;color:#000;letter-spacing:2px;margin-bottom:8px">DUPLICADO</div>
-    <div style="font-size:16px;font-weight:700;color:#333;margin-bottom:20px">Este paquete ya fue escaneado</div>
-    <div style="background:rgba(0,0,0,.1);border-radius:12px;padding:14px 20px;margin-bottom:24px;font-family:monospace;font-size:14px;color:#000;font-weight:700">ID: ${shipId}</div>
+    <div style="font-size:48px;margin-bottom:12px">🟡</div>
+    <div style="font-size:36px;font-weight:900;color:#000;letter-spacing:3px;margin-bottom:6px">DUPLICADO</div>
+    <div style="font-size:15px;font-weight:600;color:#333;margin-bottom:20px">Este paquete ya fue escaneado</div>
+    <div style="background:rgba(0,0,0,.12);border-radius:14px;padding:16px 20px;margin-bottom:24px;width:100%;max-width:320px;text-align:left">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:#555">Paquete</span>
+        <span style="font-size:14px;font-weight:800;color:#000">#${pkgNum}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:#555">ID Envío</span>
+        <span style="font-size:13px;font-weight:700;color:#000;font-family:monospace">${shipId}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:#555">Destinatario</span>
+        <span style="font-size:13px;font-weight:700;color:#000;max-width:180px;text-align:right">${nombre}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:#555">Dirección</span>
+        <span style="font-size:12px;font-weight:600;color:#000;max-width:180px;text-align:right">${dir}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px;color:#555">Cuenta ML</span>
+        <span style="font-size:13px;font-weight:700;color:#000">${cuenta}</span>
+      </div>
+    </div>
     <button ontouchstart="dismissDupAlert()" onclick="dismissDupAlert()"
-      style="background:#000;color:#FFE600;border:none;border-radius:14px;padding:16px 40px;font-size:16px;font-weight:800;cursor:pointer;touch-action:manipulation">
+      style="background:#000;color:#FFE600;border:none;border-radius:14px;padding:16px 48px;font-size:16px;font-weight:800;cursor:pointer;touch-action:manipulation;min-width:200px">
       Continuar
     </button>`;
   document.body.appendChild(el);
   try { navigator.vibrate && navigator.vibrate([100,50,100]); } catch(e) {}
   requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ el.style.opacity='1'; }); });
-  // Auto-dismiss after 3s
   clearTimeout(window._dupTimer);
-  window._dupTimer = setTimeout(()=>dismissDupAlert(), 3000);
+  window._dupTimer = setTimeout(()=>dismissDupAlert(), 4000);
 }
 
 function dismissDupAlert() {
