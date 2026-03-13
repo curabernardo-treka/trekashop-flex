@@ -570,16 +570,8 @@ nav{
       <div class="session-count" id="sessionCount">0 pkgs</div>
     </div>
 
-    <!-- No session warning -->
-    <div id="noSessionWarn" class="card">
-      <div class="card-body" style="display:flex;align-items:center;gap:12px">
-        <span style="font-size:28px">⚠️</span>
-        <div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:4px">Sin sesión activa</div>
-          <div style="font-size:12px;color:var(--muted)">Seleccioná un chofer en la pestaña Choferes para comenzar el retiro</div>
-        </div>
-      </div>
-    </div>
+    <!-- No session warning — hidden, scanner works always -->
+    <div id="noSessionWarn" style="display:none"></div>
 
     <!-- Scanner -->
     <div class="card">
@@ -616,7 +608,7 @@ nav{
       <div class="card-head"><span class="card-label">ID Manual</span></div>
       <div class="card-body">
         <div class="inp-row">
-          <input class="inp" id="manualId" placeholder="Ej: 123456789012" />
+          <input class="inp" id="manualId" placeholder="Ej: 123456789012" inputmode="numeric" pattern="[0-9]*" onclick="this.focus();this.select()" onkeydown="if(event.key==='Enter')manualSearch()" />
           <button class="btn btn-y" onclick="manualSearch()" style="flex:0;padding:12px 16px">🔍</button>
         </div>
       </div>
@@ -965,6 +957,7 @@ let cfg = JSON.parse(localStorage.getItem('ts_cfg') || '{}');
 let mlTokens = { proxy: true }; // proxy handles auth
 let pendingShipments = [];
 let pendingLoaded = false;
+let offlineMode = false;
 
 async function refreshMLTokens() {
   return true; // proxy handles tokens
@@ -1172,6 +1165,7 @@ function renderScanHistory() {
   const el = document.getElementById('scanHistoryList');
   if(!el) return;
   const colors = { 'OK':'var(--ok)', 'DUPLICADO':'#FFE600', 'CANCELADO':'#FF6D00', 'ZUIDEN':'#2979FF', 'EXTERNO':'#2979FF', 'NO PERTENECE':'#FF1744' };
+  const scrollTop = el.scrollTop;
   el.innerHTML = scanHistory.length ? scanHistory.map(h => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border)">
       <div style="font-family:monospace;font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.id}</div>
@@ -1179,6 +1173,7 @@ function renderScanHistory() {
       <div style="font-size:11px;color:var(--muted);flex-shrink:0">${h.time}</div>
     </div>
   `).join('') : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Escaneá un paquete para ver el historial</div>';
+  el.scrollTop = scrollTop;
 }
 // ─── STATUS VIEW ─────────────────────────────
 function updateStatusView() {
@@ -1247,6 +1242,36 @@ function showStatusDetail(type) {
       `).join('')}
     </div>
   `;
+}
+
+// ─── OFFLINE MODE ────────────────────────────
+function toggleOfflineMode() {
+  offlineMode = !offlineMode;
+  localStorage.setItem('ts_offline_mode', offlineMode ? '1' : '0');
+  updateOfflineModeBtn();
+  toast(offlineMode ? '📵 Modo offline activado — acepta todo' : '📶 Modo online activado', offlineMode ? 'warn' : 'ok');
+}
+function updateOfflineModeBtn() {
+  const btn = document.getElementById('offlineModeBtn');
+  if(!btn) return;
+  if(offlineMode) {
+    btn.style.background = '#FF6D00';
+    btn.style.borderColor = '#FF6D00';
+    btn.style.color = '#000';
+    btn.textContent = '📵 Modo offline ACTIVO — toca para desactivar';
+  } else {
+    btn.style.background = 'var(--card)';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text)';
+    btn.textContent = '📶 Modo online activo — toca para modo offline';
+  }
+  // Also show indicator in tab bar
+  const badge = document.getElementById('offlineBadge');
+  if(badge) badge.style.display = offlineMode ? 'inline-block' : 'none';
+}
+function initOfflineMode() {
+  offlineMode = localStorage.getItem('ts_offline_mode') === '1';
+  updateOfflineModeBtn();
 }
 
 // ─── CONFIG ──────────────────────────────────
@@ -1628,7 +1653,16 @@ let lastScanTime=0;
 
 async function handleScan(raw) {
   const now = Date.now();
-  if(now - lastScanTime < 2000) return;
+  // Check early if this might need re-scan (not-found or cancelled) before debounce
+  const _earlyId = extractId(raw);
+  const _isCancelled = session?.cancelledIds?.includes(_earlyId);
+  const _isAlreadyScanned = session?.packages?.find(p => p.shipmentId === _earlyId);
+  const _isInML = pendingShipments.find(s => s.shipmentId === _earlyId);
+  const _wouldBeNotFound = pendingShipments.length > 0 && !_isInML && !isZuidenPackage(raw);
+  // Always allow re-scan for cancelled and not-found (no debounce)
+  if(!_isCancelled && !_wouldBeNotFound) {
+    if(now - lastScanTime < 2000) return;
+  }
   lastScanTime = now;
 
   // Auto-create session if none
@@ -1678,13 +1712,22 @@ async function handleScan(raw) {
     return;
   }
 
+  // ── Offline mode — accept everything ──
+  if(offlineMode) {
+    beepOk(); vibrate([100]);
+    showBigNum(session.packages.length+1, shipId, session.chofer?.name || '');
+    addScanHistory(shipId, 'OK');
+    addPackage({ shipmentId: shipId, account: 'OFFLINE', orderId: '—', recipientName: '—', address: '—', orderTime: null, orderDate: null, scannedAt: new Date().toISOString() });
+    return;
+  }
+
   // ── Not in ML pending list → NO PERTENECE ──
   if(pendingShipments.length > 0 && !pendingShipments.find(s => s.shipmentId === shipId)) {
     beepErr(); vibrate([300,100,300]);
     showBigNum('?', shipId, '', 'notfound');
     addScanHistory(shipId, 'NO PERTENECE');
     toast('⚠️ No está en tus envíos ML', 'err');
-    return; // NOT added to packages — can rescan always
+    return;
   }
 
   // ── Normal ML package ──
