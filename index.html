@@ -79,11 +79,11 @@ nav{
 
 /* ── BOTTOM TAB BAR ── */
 #tabbar{
-  position:fixed;top:0;left:0;right:0;z-index:9999;
+  position:fixed;bottom:0;left:0;right:0;z-index:9999;
   background:#111111;
-  border-bottom:2px solid var(--border2);
+  border-top:2px solid var(--border2);
   display:flex;
-  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
   pointer-events:auto;
 }
 .tab-btn{
@@ -108,7 +108,7 @@ nav{
 .tab-btn.tap-anim .tab-icon{ transform:scale(1.5) !important; }
 
 /* ── SCROLLABLE CONTENT ── */
-.scroll-area{flex:1;overflow-y:auto;padding:16px 16px 24px}
+.scroll-area{flex:1;overflow-y:auto;padding:16px 16px 100px}
 
 /* ── HOME ACCOUNT CARDS ── */
 .account-card {
@@ -560,12 +560,15 @@ nav{
 
   <div class="scroll-area">
 
-    <!-- Session bar -->
-    <!-- session bar removed — info shown in header counter -->
+    <!-- Hidden session elements -->
     <div id="sessionBar" style="display:none"><span id="sessionAvatar"></span><span id="sessionName"></span><span id="sessionDni"></span><span id="sessionCount"></span></div>
-
-    <!-- No session warning — hidden, scanner works always -->
     <div id="noSessionWarn" style="display:none"></div>
+
+    <!-- FINALIZAR LOTE — visible arriba -->
+    <button class="fin-btn hidden" id="finBtn" onclick="askFin()"
+      style="width:100%;margin-bottom:14px;border-radius:12px;font-size:16px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px;padding:16px">
+      FINALIZAR LOTE
+    </button>
 
     <!-- Scanner -->
     <div class="card">
@@ -580,10 +583,9 @@ nav{
       <div class="scanner-wrap" id="scannerWrap">
         <div class="cam-placeholder" id="camPH">
           <div class="big">📷</div>
-          <p>Presioná <strong>Iniciar</strong> para escanear el código del paquete Flex</p>
+          <p>Presioná <strong>Iniciar</strong> para escanear</p>
         </div>
         <video id="preview" autoplay playsinline muted></video>
-
         <div class="scan-overlay" id="scanOverlay">
           <div class="scan-frame">
             <div class="scan-frame-b"></div>
@@ -592,9 +594,15 @@ nav{
         </div>
       </div>
       <div style="padding:12px;display:flex;gap:8px">
-        <button class="btn btn-ghost" style="flex:1" id="camBtn" onclick="stopCamera()" style="display:none">⏹ Detener</button>
+        <button class="btn btn-ghost" style="flex:1" id="camBtn" onclick="stopCamera()">⏹ Detener</button>
         <button class="btn btn-ghost" id="flipBtn" style="display:none;padding:12px 14px" onclick="flipCamera()">🔄</button>
       </div>
+    </div>
+
+    <!-- Historial -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px">
+      <div style="font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:10px;font-weight:700">ÚLTIMOS ESCANEOS</div>
+      <div id="scanHistoryList"><div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Escaneá un paquete para ver el historial</div></div>
     </div>
 
     <!-- Manual -->
@@ -622,9 +630,6 @@ nav{
     </div>
 
   </div><!-- /scroll-area -->
-
-  <!-- FIN SESSION -->
-  <button class="fin-btn hidden" id="finBtn" onclick="askFin()">🏁 Finalizar retiro</button>
 </div>
 
 <!-- ══════════════════════════════════════════ -->
@@ -1069,9 +1074,16 @@ function beep(freq=880, dur=0.12, type='sine', vol=0.4) {
     o.start(); o.stop(ctx.currentTime + dur);
   } catch(e){}
 }
-function beepOk() { beep(880, .12); setTimeout(()=>beep(1320,.1),120); }
-function beepDup() { beep(300,.2,'sawtooth',.3); setTimeout(()=>beep(250,.2,'sawtooth',.3),220); }
-function beepErr() { beep(200,.3,'sawtooth',.4); }
+function beepOk() { beep(1200,.08,'sine',.25); } // soft single pip
+function beepDup() { // double beep — medium
+  beep(600,.15,'square',.35);
+  setTimeout(()=>beep(600,.15,'square',.35), 200);
+}
+function beepErr() { // triple beep — alert
+  beep(300,.2,'sawtooth',.45);
+  setTimeout(()=>beep(300,.2,'sawtooth',.45), 220);
+  setTimeout(()=>beep(300,.2,'sawtooth',.45), 440);
+}
 
 // ─── VIEWS ───────────────────────────────────
 function switchView(name) {
@@ -1654,8 +1666,8 @@ async function flipCamera() {
 }
 
 // ─── SCAN HANDLER ────────────────────────────
-let lastScanTime=0;
-// ─── SCAN HANDLER ────────────────────────────
+let lastScanId = '';
+let lastScanTime = 0;
 
 async function handleScan(raw) {
   // Auto-create session if none
@@ -1666,15 +1678,12 @@ async function handleScan(raw) {
 
   const shipId = extractId(raw);
   const isZuiden = isZuidenPackage(raw);
-
-  // Debounce — skip for states that always need response
   const now = Date.now();
-  const _isCancelled = session.cancelledIds?.includes(shipId);
-  const _isDuplicate = !!session.packages.find(p => p.shipmentId === shipId);
-  const _isInML = !!pendingShipments.find(s => s.shipmentId === shipId);
-  const _wouldBeNotFound = !isZuiden && pendingShipments.length > 0 && !_isInML;
-  const _skipDebounce = _isCancelled || _isDuplicate || _wouldBeNotFound;
-  if(!_skipDebounce && (now - lastScanTime < 2000)) return;
+
+  // Debounce: same ID within 2.5s = skip (prevents double-fire from scanner)
+  // BUT: allow re-scan of same ID after 2.5s for duplicates/cancelled/notfound
+  if(shipId === lastScanId && (now - lastScanTime < 2500)) return;
+  lastScanId = shipId;
   lastScanTime = now;
 
   // ── ZUIDEN external package ──
